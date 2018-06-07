@@ -1,0 +1,16 @@
+{
+	"name": "streamcluster",
+	"power": 4412.66,
+	"l2miss": 70063114.31,
+	"l3miss_load": 6332447.36,
+	"l3miss": 53250224.55,
+	"instructions": 3962158333,
+	"cycles": 6210463213,
+	"stall_cycles": 4093196987,
+	"tsc_rate": 6199869936,
+	"intra_coh": 11631860.57,
+	"inter_coh": 0.02,
+	"llc_size": 41855819.29,
+	"local_mem": 3449075351,
+	"remote_mem": 7289916.24
+}

@@ -1,0 +1,16 @@
+{
+	"name": "nn",
+	"power": 7658.71,
+	"l2miss": 27260638.05,
+	"l3miss_load": 7.28,
+	"l3miss": 3890.97,
+	"instructions": 2701513779,
+	"cycles": 6595032652,
+	"stall_cycles": 4419156390,
+	"tsc_rate": 6272217408,
+	"intra_coh": 15833654.57,
+	"inter_coh": 0.11,
+	"llc_size": 40801431.37,
+	"local_mem": 150875.27,
+	"remote_mem": 22072239.86
+}

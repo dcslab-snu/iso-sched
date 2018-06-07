@@ -1,0 +1,16 @@
+{
+	"name": "kmeans",
+	"power": 2597.74,
+	"l2miss": 60312129.97,
+	"l3miss_load": 213036.32,
+	"l3miss": 4526423.94,
+	"instructions": 3225943593,
+	"cycles": 3485066647,
+	"stall_cycles": 1991692723,
+	"tsc_rate": 6262446672,
+	"intra_coh": 41440666.35,
+	"inter_coh": 0,
+	"llc_size": 38253605.93,
+	"local_mem": 304241980.1,
+	"remote_mem": 5075803.65
+}

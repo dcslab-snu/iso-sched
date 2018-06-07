@@ -1,0 +1,16 @@
+{
+	"name": "sp",
+	"power": 10993.23,
+	"l2miss": 144590751.35,
+	"l3miss_load": 4344448.79,
+	"l3miss": 73568166.5,
+	"instructions": 5814766469.37,
+	"cycles": 3326069269.69,
+	"stall_cycles": 1090957399.18,
+	"tsc_rate": 6131581184,
+	"intra_coh": 2591.32,
+	"inter_coh": 0.05,
+	"llc_size": 40958152.55,
+	"local_mem": 5509242029.2,
+	"remote_mem": 55148252.3
+}
