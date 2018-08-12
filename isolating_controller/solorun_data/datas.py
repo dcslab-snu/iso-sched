@@ -4,8 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict
 
-from metric_container.basic_metric import BasicMetric
-
+from ..metric_container.basic_metric import BasicMetric
 
 data_map: Dict[str, BasicMetric] = dict()
 

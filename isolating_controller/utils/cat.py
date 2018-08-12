@@ -1,9 +1,10 @@
 # coding: UTF-8
 
 import os
-import psutil
 import subprocess
 from typing import Iterable, Optional
+
+import psutil
 
 
 class CAT:

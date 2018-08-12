@@ -1,8 +1,9 @@
 # coding: UTF-8
 
-import psutil
 import subprocess
 from typing import Set
+
+import psutil
 
 
 class CgroupCpuset:
@@ -10,7 +11,7 @@ class CgroupCpuset:
 
     @staticmethod
     def create_group(name: str) -> None:
-        subprocess.check_call(args=('sudo', 'mkdir', f'{CgroupCpuset.MOUNT_POINT}/{name}'))
+        subprocess.check_call(args=('sudo', 'mkdir', '-p', f'{CgroupCpuset.MOUNT_POINT}/{name}'))
 
     @staticmethod
     def add_task(name: str, pid: int) -> None:
