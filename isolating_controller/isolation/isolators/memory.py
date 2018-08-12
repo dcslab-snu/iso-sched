@@ -19,31 +19,37 @@ class MemoryIsolator(Isolator):
         self._cur_step = DVFS.MAX - DVFS.STEP
 
     def increase(self) -> 'MemoryIsolator':
-        self._cur_step += DVFS.STEP
-        return self
-
-    def decrease(self) -> 'MemoryIsolator':
         self._cur_step -= DVFS.STEP
         return self
 
+    def decrease(self) -> 'MemoryIsolator':
+        self._cur_step += DVFS.STEP
+        return self
+
     def _enforce(self) -> None:
-        # FIXME: hard coding
-        DVFS.set_freq(self._cur_step, range(8, 16))
+        logger = logging.getLogger(self.__class__.__name__)
+        logger.info(f'frequency of cpuset {self._background_wl.cpuset} is {self._cur_step / 1_000_000}GHz')
+
+        DVFS.set_freq(self._cur_step, self._background_wl.cpuset)
 
     def _monitoring_result(self, metric_diff: MetricDiff) -> IsolationResult:
         logger = logging.getLogger(self.__class__.__name__)
 
-        curr = metric_diff.local_mem_util
-        prev = self._prev_metric_diff.local_mem_util
-        diff = curr - prev
+        curr_diff = metric_diff.local_mem_util
+        prev_diff = self._prev_metric_diff.local_mem_util
+        diff_of_diff = curr_diff - prev_diff
 
         # TODO: remove
-        logger.info(f'monitoring diff is {diff}')
-        logger.info(f'current diff: {curr}, prev diff: {prev}')
+        logger.info(f'diff of diff is {diff_of_diff}')
+        logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
 
-        if not (DVFS.MIN <= self._cur_step <= DVFS.MAX) or abs(diff) <= MemoryIsolator._THRESHOLD:
+        if not (DVFS.MIN < self._cur_step < DVFS.MAX) \
+                or abs(diff_of_diff) <= MemoryIsolator._THRESHOLD \
+                or abs(curr_diff) <= MemoryIsolator._THRESHOLD:
             return IsolationResult.STOP
-        elif diff > 0:
-            return IsolationResult.INCREASE
-        else:
+
+        elif curr_diff > 0:
             return IsolationResult.DECREASE
+
+        else:
+            return IsolationResult.INCREASE

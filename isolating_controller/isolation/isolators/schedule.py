@@ -33,23 +33,30 @@ class SchedIsolator(Isolator):
         return self
 
     def _enforce(self) -> None:
+        logger = logging.getLogger(self.__class__.__name__)
+        logger.info(f'affinity of background is {self._cur_step}-15')
+
         # FIXME: hard coding
         CgroupCpuset.assign(str(self._background_wl.pid), set(range(self._cur_step, 16)))
 
     def _monitoring_result(self, metric_diff: MetricDiff) -> IsolationResult:
         logger = logging.getLogger(self.__class__.__name__)
 
-        curr = metric_diff.local_mem_util
-        prev = self._prev_metric_diff.local_mem_util
-        diff = curr - prev
+        curr_diff = metric_diff.local_mem_util
+        prev_diff = self._prev_metric_diff.local_mem_util
+        diff_of_diff = curr_diff - prev_diff
 
         # TODO: remove
-        logger.info(f'monitoring diff is {diff}')
-        logger.info(f'current diff: {curr}, prev diff: {prev}')
+        logger.info(f'diff of diff is {diff_of_diff}')
+        logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
 
-        if not (8 <= self._cur_step <= 15) or abs(diff) <= SchedIsolator._THRESHOLD:
+        if not (8 < self._cur_step < 15) \
+                or abs(diff_of_diff) <= SchedIsolator._THRESHOLD \
+                or abs(curr_diff) <= SchedIsolator._THRESHOLD:
             return IsolationResult.STOP
-        elif diff > 0:
-            return IsolationResult.INCREASE
-        else:
+
+        elif curr_diff > 0:
             return IsolationResult.DECREASE
+
+        else:
+            return IsolationResult.INCREASE

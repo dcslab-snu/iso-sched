@@ -52,21 +52,21 @@ class CacheIsolator(Isolator):
     def _monitoring_result(self, metric_diff: MetricDiff) -> IsolationResult:
         logger = logging.getLogger(self.__class__.__name__)
 
-        curr = metric_diff.l3_hit_ratio
-        prev = self._prev_metric_diff.l3_hit_ratio
-        diff = curr - prev
+        curr_diff = metric_diff.l3_hit_ratio
+        prev_diff = self._prev_metric_diff.l3_hit_ratio
+        diff_of_diff = curr_diff - prev_diff
 
         # TODO: remove
-        logger.info(f'monitoring diff is {diff}')
-        logger.info(f'current diff: {curr}, prev diff: {prev}')
+        logger.info(f'diff of diff is {diff_of_diff}')
+        logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
 
-        if abs(diff) <= CacheIsolator._THRESHOLD or not (CAT.MIN <= self._cur_step <= CAT.MAX):
-            # FIXME
-            # CAT.remove_group(str(self._foreground_wl.pid))
-            # CAT.remove_group(str(self._foreground_wl.background_workload.pid))
-
+        if not (CAT.MIN < self._cur_step < CAT.MAX) \
+                or abs(diff_of_diff) <= CacheIsolator._THRESHOLD \
+                or abs(curr_diff) <= CacheIsolator._THRESHOLD:
             return IsolationResult.STOP
-        elif diff > 0:
+
+        elif curr_diff > 0:
             return IsolationResult.DECREASE
+
         else:
             return IsolationResult.INCREASE
