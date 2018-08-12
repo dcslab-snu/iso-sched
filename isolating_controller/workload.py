@@ -3,6 +3,7 @@
 from typing import Deque, Tuple
 
 import cpuinfo
+import psutil
 
 from .metric_container.basic_metric import BasicMetric, MetricDiff
 from .solorun_data.datas import data_map
