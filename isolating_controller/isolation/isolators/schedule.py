@@ -21,9 +21,6 @@ class SchedIsolator(Isolator):
         CgroupCpuset.create_group(str(self._background_wl.pid))
         CgroupCpuset.add_task(str(self._background_wl.pid), self._background_wl.pid)
 
-    def __del__(self):
-        CgroupCpuset.remove_group(str(self._background_wl.pid))
-
     def increase(self) -> 'SchedIsolator':
         self._cur_step -= 1
         return self

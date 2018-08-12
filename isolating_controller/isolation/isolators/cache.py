@@ -23,10 +23,6 @@ class CacheIsolator(Isolator):
         CAT.create_group(str(self._background_wl.pid))
         CAT.add_task(str(self._background_wl.pid), self._background_wl.pid)
 
-    def __del__(self):
-        CAT.remove_group(str(self._foreground_wl.pid))
-        CAT.remove_group(str(self._background_wl.pid))
-
     def increase(self) -> 'CacheIsolator':
         self._cur_step += 1
         self._acceleration *= 2
