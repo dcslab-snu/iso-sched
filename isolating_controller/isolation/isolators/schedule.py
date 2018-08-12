@@ -34,6 +34,7 @@ class SchedIsolator(Isolator):
 
     def _enforce(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
+        # FIXME: hard coding
         logger.info(f'affinity of background is {self._cur_step}-15')
 
         # FIXME: hard coding
@@ -50,6 +51,7 @@ class SchedIsolator(Isolator):
         logger.info(f'diff of diff is {diff_of_diff}')
         logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
 
+        # FIXME: hard coding
         if not (8 < self._cur_step < 15) \
                 or abs(diff_of_diff) <= SchedIsolator._THRESHOLD \
                 or abs(curr_diff) <= SchedIsolator._THRESHOLD:

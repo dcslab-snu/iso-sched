@@ -43,9 +43,11 @@ class CacheIsolator(Isolator):
         logger.info(f'current step : {self._cur_step}, accel: {self._acceleration}')
         logger.info(f'foreground : background = {self._cur_step} : {CAT.MAX - self._cur_step}')
 
+        # FIXME: hard coding
         fg_mask = CAT.gen_mask(0, self._cur_step)
         CAT.assign(str(self._foreground_wl.pid), fg_mask, '1')
 
+        # FIXME: hard coding
         bg_mask = CAT.gen_mask(self._cur_step)
         CAT.assign(str(self._background_wl.pid), bg_mask, '1')
 
