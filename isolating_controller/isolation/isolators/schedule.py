@@ -22,11 +22,11 @@ class SchedIsolator(Isolator):
         CgroupCpuset.add_task(str(self._background_wl.pid), self._background_wl.pid)
 
     def increase(self) -> 'SchedIsolator':
-        self._cur_step -= 1
+        self._cur_step += 1
         return self
 
     def decrease(self) -> 'SchedIsolator':
-        self._cur_step += 1
+        self._cur_step -= 1
         return self
 
     def _enforce(self) -> None:
