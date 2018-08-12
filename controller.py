@@ -204,6 +204,7 @@ class ControlThread(Thread):
         for group in self._isolation_groups:
             if group.new_isolator_needed:
                 group.choose_next_isolator()
+                continue
 
             group.isolate()
 
