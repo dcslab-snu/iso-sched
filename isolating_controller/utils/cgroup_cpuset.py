@@ -16,6 +16,11 @@ class CgroupCpuset:
     @staticmethod
     def add_task(name: str, pid: int) -> None:
         p = psutil.Process(pid)
+
+        for thread in p.threads():
+            subprocess.run(args=('sudo', 'tee', '-a', f'{CgroupCpuset.MOUNT_POINT}/{name}/tasks'),
+                           input=f'{thread.id}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
+
         for child in p.children(True):
             subprocess.run(args=('sudo', 'tee', '-a', f'{CgroupCpuset.MOUNT_POINT}/{name}/tasks'),
                            input=f'{child.pid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
@@ -31,7 +36,7 @@ class CgroupCpuset:
     @staticmethod
     def assign(group_name: str, core_set: Set[int]) -> None:
         subprocess.run(args=('sudo', 'tee', f'/sys/fs/cgroup/cpuset/{group_name}/cpuset.cpus'),
-                       input=','.join(map(str, core_set)), check=True, encoding='ASCII')
+                       input=','.join(map(str, core_set)), check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
 
     @staticmethod
     def convert_to_set(hyphen_str: str) -> Set[int]:
