@@ -15,7 +15,7 @@ class MemoryIsolator(Isolator):
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
-        # FIXME: hard coding
+        # FIXME: hard coded
         self._cur_step = DVFS.MAX - DVFS.STEP
 
     def increase(self) -> 'MemoryIsolator':

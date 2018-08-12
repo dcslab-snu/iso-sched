@@ -15,7 +15,7 @@ class SchedIsolator(Isolator):
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
-        # FIXME: hard coding
+        # FIXME: hard coded
         self._cur_step = 9
 
         CgroupCpuset.create_group(str(self._background_wl.pid))
@@ -34,10 +34,10 @@ class SchedIsolator(Isolator):
 
     def _enforce(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
-        # FIXME: hard coding
+        # FIXME: hard coded
         logger.info(f'affinity of background is {self._cur_step}-15')
 
-        # FIXME: hard coding
+        # FIXME: hard coded
         CgroupCpuset.assign(str(self._background_wl.pid), set(range(self._cur_step, 16)))
 
     def _monitoring_result(self, metric_diff: MetricDiff) -> IsolationResult:
@@ -51,7 +51,7 @@ class SchedIsolator(Isolator):
         logger.info(f'diff of diff is {diff_of_diff}')
         logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
 
-        # FIXME: hard coding
+        # FIXME: hard coded
         if not (8 < self._cur_step < 15) \
                 or abs(diff_of_diff) <= SchedIsolator._THRESHOLD \
                 or abs(curr_diff) <= SchedIsolator._THRESHOLD:

@@ -17,7 +17,7 @@ from pika import BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import Basic
 
-from isolating_controller.isolation.policies import IsolationPolicy, DiffPolicy
+from isolating_controller.isolation.policies import DiffPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 
@@ -47,7 +47,7 @@ class PendingQueue:
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(f'{workload.name} (pid: {workload.pid}) is ready for active as Background')
 
-        # FIXME: hard coding
+        # FIXME: hard coded
         other_cpuset = tuple(map(lambda x: x - 8, workload.cpuset))
 
         if other_cpuset in self._fg_q:
@@ -62,7 +62,7 @@ class PendingQueue:
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(f'{workload.name} (pid: {workload.pid}) is ready for active as Foreground')
 
-        # FIXME: hard coding
+        # FIXME: hard coded
         other_cpuset = tuple(map(lambda x: x + 8, workload.cpuset))
 
         if other_cpuset in self._bg_q:
@@ -132,7 +132,7 @@ class MainController(metaclass=Singleton):
 
         workload = Workload(wl_name, pid, perf_pid, corun_q, perf_interval)
 
-        # FIXME: hard coding
+        # FIXME: hard coded
         if wl_name == 'SP':
             self._pending_wl.add_bg(workload)
         else:

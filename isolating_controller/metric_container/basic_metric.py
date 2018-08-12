@@ -112,12 +112,12 @@ class BasicMetric:
 
 
 class MetricDiff:
-    # FIXME: hard coding
+    # FIXME: hard coded
     _MAX_MEM_BANDWIDTH = 68 * 1024 * 1024 * 1024
 
     def __init__(self, prev: BasicMetric, curr: BasicMetric) -> None:
         self._l3_hit_ratio = curr.l3hit_ratio - prev.l3hit_ratio
-        # FIXME: hard coding
+        # FIXME: hard coded
         self._local_mem = curr.local_mem * 5 / self._MAX_MEM_BANDWIDTH - prev.local_mem * 5 / self._MAX_MEM_BANDWIDTH
         self._remote_mem = curr.remote_mem * 5 / self._MAX_MEM_BANDWIDTH - prev.remote_mem * 5 / self._MAX_MEM_BANDWIDTH
 
