@@ -47,28 +47,31 @@ class PendingQueue:
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(f'{workload.name} (pid: {workload.pid}) is ready for active as Background')
 
-        cpuset = workload.cpuset
+        # FIXME: hard coding
+        other_cpuset = tuple(map(lambda x: x - 8, workload.cpuset))
 
-        if cpuset in self._fg_q:
-            new_group = self._policy_type(self._fg_q[cpuset], workload)
+        if other_cpuset in self._fg_q:
+            new_group = self._policy_type(self._fg_q[other_cpuset], workload)
             self._pending_list.append(new_group)
-            del self._fg_q[cpuset]
+            del self._fg_q[other_cpuset]
 
         else:
-            self._bg_q[cpuset] = workload
+            self._bg_q[workload.cpuset] = workload
 
     def add_fg(self, workload: Workload) -> None:
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(f'{workload.name} (pid: {workload.pid}) is ready for active as Foreground')
-        cpuset = workload.cpuset
 
-        if cpuset in self._bg_q:
-            new_group = self._policy_type(self._bg_q[cpuset], workload)
+        # FIXME: hard coding
+        other_cpuset = tuple(map(lambda x: x + 8, workload.cpuset))
+
+        if other_cpuset in self._bg_q:
+            new_group = self._policy_type(self._bg_q[other_cpuset], workload)
             self._pending_list.append(new_group)
-            del self._bg_q[cpuset]
+            del self._bg_q[other_cpuset]
 
         else:
-            self._fg_q[cpuset] = workload
+            self._fg_q[workload.cpuset] = workload
 
     @property
     def pending(self):
