@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 
 from .diff_policy import DiffPolicy
-from ..isolators import CacheIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
@@ -26,10 +26,12 @@ class DiffWViolationPolicy(DiffPolicy):
         elif l3_hit_ratio < local_mem_util and \
                 (not isinstance(self._isolator, MemoryIsolator) and not isinstance(self._isolator, SchedIsolator)):
             return True
+        else:
+            return False
 
     @property
     def new_isolator_needed(self) -> bool:
-        if self._isolator is None:
+        if self._isolator is None or isinstance(self._isolator, IdleIsolator):
             return True
 
         logger = logging.getLogger(self.__class__.__name__)
