@@ -2,3 +2,4 @@
 
 from .base_policy import IsolationPolicy
 from .diff_policy import DiffPolicy
+from .diff_with_violation_policy import DiffWViolationPolicy

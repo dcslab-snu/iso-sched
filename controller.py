@@ -17,7 +17,7 @@ from pika import BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import Basic
 
-from isolating_controller.isolation.policies import DiffPolicy, IsolationPolicy
+from isolating_controller.isolation.policies import DiffWViolationPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 
@@ -82,7 +82,7 @@ class MainController(metaclass=Singleton):
     def __init__(self, metric_buf_size: int):
         self._corun_metric_dict: Dict[int, Deque] = dict()
 
-        self._pending_wl = PendingQueue(DiffPolicy)
+        self._pending_wl = PendingQueue(DiffWViolationPolicy)
 
         self._metric_buf_size = metric_buf_size
 
@@ -244,9 +244,10 @@ class ControlThread(Thread):
 
         while True:
             self._register_pending_workloads()
-            self._isolate_workloads()
 
             time.sleep(self._interval)
+
+            self._isolate_workloads()
 
 
 def main():
