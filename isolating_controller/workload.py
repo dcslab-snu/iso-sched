@@ -1,5 +1,6 @@
 # coding: UTF-8
 
+from itertools import chain
 from typing import Deque, Tuple
 
 import cpuinfo
@@ -66,3 +67,13 @@ class Workload:
         curr_metric: BasicMetric = self._corun_metrics[0]
 
         return MetricDiff(solorun_data, curr_metric)
+
+    def all_child_tid(self) -> Tuple[int, ...]:
+        try:
+            return tuple(chain(
+                    (t.id for t in self._proc_info.threads()),
+                    *((t.id for t in proc.threads()) for proc in self._proc_info.children(recursive=True) if proc is
+                      not list())
+            ))
+        except psutil.NoSuchProcess:
+            return tuple()

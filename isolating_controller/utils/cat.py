@@ -5,17 +5,13 @@ import subprocess
 from pathlib import Path
 from typing import Iterable, Optional
 
-import psutil
-
 
 def len_of_mask(mask: str) -> int:
     cnt = 0
     num = int(mask, 16)
-
     while num is not 0:
         cnt += 1
         num >>= 1
-
     return cnt
 
 
@@ -32,10 +28,8 @@ class CAT:
 
     @staticmethod
     def add_task(name: str, pid: int) -> None:
-        p = psutil.Process(pid)
-        for child in p.children(True):
-            subprocess.run(args=('sudo', 'tee', '-a', str(CAT.MOUNT_POINT / name / 'tasks')),
-                           input=f'{child.pid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
+        subprocess.run(args=('sudo', 'tee', '-a', str(CAT.MOUNT_POINT / name / 'tasks')),
+                       input=f'{pid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
 
     @staticmethod
     def remove_group(name: str) -> None:

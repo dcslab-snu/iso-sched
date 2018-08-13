@@ -18,10 +18,15 @@ class CacheIsolator(Isolator):
         self._cur_step = CAT.MAX // 2 + CAT.STEP
         self._acceleration = CAT.STEP
 
-        CAT.create_group(str(foreground_wl.pid))
-        CAT.add_task(str(foreground_wl.pid), foreground_wl.pid)
-        CAT.create_group(str(self._background_wl.pid))
-        CAT.add_task(str(self._background_wl.pid), self._background_wl.pid)
+        foreground_group = str(foreground_wl.pid)
+        CAT.create_group(foreground_group)
+        for tid in foreground_wl.all_child_tid():
+            CAT.add_task(foreground_group, tid)
+
+        background_group = str(background_wl.pid)
+        CAT.create_group(background_group)
+        for tid in background_wl.all_child_tid():
+            CAT.add_task(background_group, tid)
 
     def increase(self) -> 'CacheIsolator':
         self._cur_step += 1
