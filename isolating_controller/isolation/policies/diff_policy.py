@@ -18,7 +18,7 @@ class DiffPolicy(IsolationPolicy):
 
     @property
     def new_isolator_needed(self) -> bool:
-        return self._isolator is None or isinstance(self._isolator, IdleIsolator)
+        return isinstance(self._cur_isolator, IdleIsolator)
 
     def _clear_flags(self) -> None:
         self._is_llc_isolated = False
@@ -41,54 +41,46 @@ class DiffPolicy(IsolationPolicy):
             self._clear_flags()
 
         if not self._is_llc_isolated and l3_hit_ratio > local_mem_util:
-            self._isolator = CacheIsolator(self._fg_wl, self._bg_wl)
+            self._cur_isolator = self._isolator_map[CacheIsolator]
             self._is_llc_isolated = True
             logger.info(f'Cache Isolation for workload {fg_name} (pid: {fg_pid}) is started')
 
         elif not self._is_mem_isolated and l3_hit_ratio < local_mem_util:
-            self._isolator = MemoryIsolator(self._fg_wl, self._bg_wl)
+            self._cur_isolator = self._isolator_map[MemoryIsolator]
+            self._cur_isolator.increase()
+            self._cur_isolator._next_phase = IsolationPhase.ENFORCING
             self._is_mem_isolated = True
             logger.info(f'Memory Bandwidth Isolation for workload {fg_name} (pid: {fg_pid}) is started')
 
         elif not self._is_sched_isolated and l3_hit_ratio < local_mem_util:
-            self._isolator = SchedIsolator(self._fg_wl, self._bg_wl)
+            self._cur_isolator = self._isolator_map[SchedIsolator]
+            self._cur_isolator.increase()
+            self._cur_isolator._next_phase = IsolationPhase.ENFORCING
             self._is_sched_isolated = True
             logger.info(f'Cpuset Isolation for workload {fg_name} (pid: {fg_pid}) is started')
 
-    def isolate(self) -> None:
+    def _isolate(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
 
-        # for debugging only
-        metric_diff = self._fg_wl.calc_metric_diff()
-        l3_hit_ratio = abs(metric_diff.l3_hit_ratio)
-        local_mem_util = abs(metric_diff.local_mem_util)
+        if self._cur_isolator.next_phase is IsolationPhase.ENFORCING:
+            self._cur_isolator.enforce()
 
-        if not isinstance(self._isolator, IdleIsolator):
-            if l3_hit_ratio > local_mem_util and not isinstance(self._isolator, CacheIsolator):
-                logger.warning('Violation! not cache')
-            elif l3_hit_ratio < local_mem_util and \
-                    (not isinstance(self._isolator, MemoryIsolator) or not isinstance(self._isolator, SchedIsolator)):
-                logger.warning('Violation! not memory')
-
-        if self._isolator.next_phase is IsolationPhase.ENFORCING:
-            self._isolator.enforce()
-
-        elif self._isolator.next_phase is IsolationPhase.MONITORING:
-            result = self._isolator.monitoring_result()
+        elif self._cur_isolator.next_phase is IsolationPhase.MONITORING:
+            result = self._cur_isolator.monitoring_result()
 
             logger.info(f'Monitoring Result : {result.name}')
 
             if result is IsolationResult.INCREASE:
-                self._isolator.increase()
+                self._cur_isolator.increase()
             elif result is IsolationResult.DECREASE:
-                self._isolator.decrease()
+                self._cur_isolator.decrease()
             elif result is IsolationResult.STOP:
-                self._isolator = DiffPolicy.IDLE_ISOLATOR
+                self._cur_isolator = DiffPolicy.IDLE_ISOLATOR
             else:
                 raise NotImplementedError(f'unknown isolation result : {result}')
 
-        elif self._isolator.next_phase is IsolationPhase.IDLE:
+        elif self._cur_isolator.next_phase is IsolationPhase.IDLE:
             pass
 
         else:
-            raise NotImplementedError(f'unknown isolation phase : {self._isolator.next_phase}')
+            raise NotImplementedError(f'unknown isolation phase : {self._cur_isolator.next_phase}')

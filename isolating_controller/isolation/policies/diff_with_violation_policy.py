@@ -21,23 +21,24 @@ class DiffWViolationPolicy(DiffPolicy):
         l3_hit_ratio = abs(metric_diff.l3_hit_ratio)
         local_mem_util = abs(metric_diff.local_mem_util)
 
-        if l3_hit_ratio > local_mem_util and not isinstance(self._isolator, CacheIsolator):
+        if l3_hit_ratio > local_mem_util and not isinstance(self._cur_isolator, CacheIsolator):
             return True
         elif l3_hit_ratio < local_mem_util and \
-                (not isinstance(self._isolator, MemoryIsolator) and not isinstance(self._isolator, SchedIsolator)):
+                (not isinstance(self._cur_isolator, MemoryIsolator)
+                 and not isinstance(self._cur_isolator, SchedIsolator)):
             return True
         else:
             return False
 
     @property
     def new_isolator_needed(self) -> bool:
-        if self._isolator is None or isinstance(self._isolator, IdleIsolator):
+        if isinstance(self._cur_isolator, IdleIsolator):
             return True
 
         logger = logging.getLogger(self.__class__.__name__)
 
         if self._check_violation():
-            logger.info(f'violation is occurred. current isolator type : {self._isolator.__class__.__name__}')
+            logger.info(f'violation is occurred. current isolator type : {self._cur_isolator.__class__.__name__}')
 
             if self._violation_count is None:
                 self._violation_count = 1

@@ -204,7 +204,12 @@ class ControlThread(Thread):
         self._isolation_groups: Set[IsolationPolicy] = set()
 
     def _isolate_workloads(self):
+        logger = logging.getLogger(self.__class__.__name__)
         for group in self._isolation_groups:
+            logger.info('')
+            logger.info(f'***************isolation of {group.name} #{group.iteration_num}***************')
+            logger.info(f'Current phase : {group.current_phase.name}')
+
             if group.new_isolator_needed:
                 group.choose_next_isolator()
                 continue

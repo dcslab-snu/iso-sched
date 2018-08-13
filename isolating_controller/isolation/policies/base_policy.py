@@ -1,9 +1,10 @@
 # coding: UTF-8
 
 from abc import ABCMeta, abstractmethod
-from typing import Optional
+from typing import Mapping, Type
 
-from ..isolators import IdleIsolator, Isolator
+from .. import IsolationPhase
+from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
@@ -14,7 +15,14 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._fg_wl = fg_wl
         self._bg_wl = bg_wl
 
-        self._isolator: Optional[Isolator] = None
+        self._iteration_num: int = 0
+        self._isolator_map: Mapping[Type[Isolator], Isolator] = dict((
+            (IdleIsolator, IdleIsolator()),
+            (CacheIsolator, CacheIsolator(fg_wl, bg_wl)),
+            (MemoryIsolator, MemoryIsolator(fg_wl, bg_wl)),
+            (SchedIsolator, SchedIsolator(fg_wl, bg_wl))
+        ))
+        self._cur_isolator: Isolator = self._isolator_map[IdleIsolator]
 
     @property
     @abstractmethod
@@ -25,8 +33,12 @@ class IsolationPolicy(metaclass=ABCMeta):
     def choose_next_isolator(self) -> None:
         pass
 
-    @abstractmethod
     def isolate(self) -> None:
+        self._isolate()
+        self._iteration_num += 1
+
+    @abstractmethod
+    def _isolate(self) -> None:
         pass
 
     @property
@@ -42,5 +54,17 @@ class IsolationPolicy(metaclass=ABCMeta):
         return not self._fg_wl.is_running or not self._bg_wl.is_running
 
     @property
-    def isolator(self):
-        return self._isolator
+    def cur_isolator(self) -> Isolator:
+        return self._cur_isolator
+
+    @property
+    def iteration_num(self) -> int:
+        return self._iteration_num
+
+    @property
+    def name(self) -> str:
+        return f'{self._fg_wl.name}({self._fg_wl.pid})'
+
+    @property
+    def current_phase(self) -> IsolationPhase:
+        return self._cur_isolator.next_phase
