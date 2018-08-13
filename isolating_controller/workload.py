@@ -66,7 +66,7 @@ class Workload:
         solorun_data = data_map[self.name]
         curr_metric: BasicMetric = self._corun_metrics[0]
 
-        return MetricDiff(solorun_data, curr_metric)
+        return MetricDiff(curr_metric, solorun_data)
 
     def all_child_tid(self) -> Tuple[int, ...]:
         try:
