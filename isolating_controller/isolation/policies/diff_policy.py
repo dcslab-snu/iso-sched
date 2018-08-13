@@ -58,6 +58,18 @@ class DiffPolicy(IsolationPolicy):
     def isolate(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
 
+        # for debugging only
+        metric_diff = self._fg_wl.calc_metric_diff()
+        l3_hit_ratio = abs(metric_diff.l3_hit_ratio)
+        local_mem_util = abs(metric_diff.local_mem_util)
+
+        if not isinstance(self._isolator, IdleIsolator):
+            if l3_hit_ratio > local_mem_util and not isinstance(self._isolator, CacheIsolator):
+                logger.warning('Violation! not cache')
+            elif l3_hit_ratio < local_mem_util and \
+                    (not isinstance(self._isolator, MemoryIsolator) or not isinstance(self._isolator, SchedIsolator)):
+                logger.warning('Violation! not memory')
+
         if self._isolator.next_phase is IsolationPhase.ENFORCING:
             self._isolator.enforce()
 
