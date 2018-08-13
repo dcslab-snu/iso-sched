@@ -43,7 +43,7 @@ class MemoryIsolator(Isolator):
         logger.info(f'diff of diff is {diff_of_diff}')
         logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
 
-        if not (DVFS.MIN < self._cur_step < DVFS.MAX) \
+        if not (DVFS.MIN + DVFS.STEP < self._cur_step < DVFS.MAX - DVFS.STEP) \
                 or abs(diff_of_diff) <= MemoryIsolator._THRESHOLD \
                 or abs(curr_diff) <= MemoryIsolator._THRESHOLD:
             return IsolationResult.STOP

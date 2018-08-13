@@ -63,7 +63,7 @@ class CacheIsolator(Isolator):
         logger.info(f'diff of diff is {diff_of_diff}')
         logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
 
-        if not (CAT.MIN < self._cur_step < CAT.MAX) \
+        if not (CAT.MIN + CAT.STEP < self._cur_step < CAT.MAX - CAT.STEP) \
                 or abs(diff_of_diff) <= CacheIsolator._THRESHOLD \
                 or abs(curr_diff) <= CacheIsolator._THRESHOLD:
             return IsolationResult.STOP
