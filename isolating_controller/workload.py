@@ -72,8 +72,7 @@ class Workload:
         try:
             return tuple(chain(
                     (t.id for t in self._proc_info.threads()),
-                    *((t.id for t in proc.threads()) for proc in self._proc_info.children(recursive=True) if proc is
-                      not list())
+                    *((t.id for t in proc.threads()) for proc in self._proc_info.children(recursive=True))
             ))
         except psutil.NoSuchProcess:
             return tuple()

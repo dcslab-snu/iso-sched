@@ -3,8 +3,7 @@
 import logging
 
 from .base_isolator import Isolator
-from .. import IsolationResult
-from ...metric_container.basic_metric import MetricDiff
+from .. import NextStep
 from ...utils import DVFS
 from ...workload import Workload
 
@@ -16,7 +15,7 @@ class MemoryIsolator(Isolator):
         super().__init__(foreground_wl, background_wl)
 
         # FIXME: hard coded
-        self._cur_step = DVFS.MAX - DVFS.STEP
+        self._cur_step = DVFS.MAX
 
     def increase(self) -> 'MemoryIsolator':
         self._cur_step -= DVFS.STEP
@@ -32,24 +31,34 @@ class MemoryIsolator(Isolator):
 
         DVFS.set_freq(self._cur_step, self._background_wl.cpuset)
 
-    def _monitoring_result(self, metric_diff: MetricDiff) -> IsolationResult:
-        logger = logging.getLogger(self.__class__.__name__)
+    def monitoring_result(self) -> NextStep:
+        metric_diff = self._foreground_wl.calc_metric_diff()
 
         curr_diff = metric_diff.local_mem_util
         prev_diff = self._prev_metric_diff.local_mem_util
         diff_of_diff = curr_diff - prev_diff
 
         # TODO: remove
+        logger = logging.getLogger(self.__class__.__name__)
         logger.info(f'diff of diff is {diff_of_diff}')
         logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
 
-        if not (DVFS.MIN + DVFS.STEP < self._cur_step < DVFS.MAX - DVFS.STEP) \
-                or abs(diff_of_diff) <= MemoryIsolator._THRESHOLD \
+        self._prev_metric_diff = metric_diff
+
+        if not (DVFS.MIN < self._cur_step < DVFS.MAX) \
                 or abs(curr_diff) <= MemoryIsolator._THRESHOLD:
-            return IsolationResult.STOP
+            return NextStep.STOP
 
         elif curr_diff > 0:
-            return IsolationResult.DECREASE
+            # FIXME: hard coded
+            if DVFS.MAX <= self._cur_step - DVFS.STEP:
+                return NextStep.STOP
+            else:
+                return NextStep.DECREASE
 
         else:
-            return IsolationResult.INCREASE
+            # FIXME: hard coded
+            if self._cur_step - DVFS.STEP <= DVFS.MIN:
+                return NextStep.STOP
+            else:
+                return NextStep.INCREASE

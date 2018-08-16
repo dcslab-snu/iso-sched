@@ -3,7 +3,6 @@
 import logging
 
 from .base_policy import IsolationPolicy
-from .. import IsolationPhase, IsolationResult
 from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
@@ -47,40 +46,10 @@ class DiffPolicy(IsolationPolicy):
 
         elif not self._is_mem_isolated and l3_hit_ratio < local_mem_util:
             self._cur_isolator = self._isolator_map[MemoryIsolator]
-            self._cur_isolator.increase()
-            self._cur_isolator._next_phase = IsolationPhase.ENFORCING
             self._is_mem_isolated = True
             logger.info(f'Memory Bandwidth Isolation for workload {fg_name} (pid: {fg_pid}) is started')
 
         elif not self._is_sched_isolated and l3_hit_ratio < local_mem_util:
             self._cur_isolator = self._isolator_map[SchedIsolator]
-            self._cur_isolator.increase()
-            self._cur_isolator._next_phase = IsolationPhase.ENFORCING
             self._is_sched_isolated = True
             logger.info(f'Cpuset Isolation for workload {fg_name} (pid: {fg_pid}) is started')
-
-    def _isolate(self) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
-
-        if self._cur_isolator.next_phase is IsolationPhase.ENFORCING:
-            self._cur_isolator.enforce()
-
-        elif self._cur_isolator.next_phase is IsolationPhase.MONITORING:
-            result = self._cur_isolator.monitoring_result()
-
-            logger.info(f'Monitoring Result : {result.name}')
-
-            if result is IsolationResult.INCREASE:
-                self._cur_isolator.increase()
-            elif result is IsolationResult.DECREASE:
-                self._cur_isolator.decrease()
-            elif result is IsolationResult.STOP:
-                self._cur_isolator = DiffPolicy.IDLE_ISOLATOR
-            else:
-                raise NotImplementedError(f'unknown isolation result : {result}')
-
-        elif self._cur_isolator.next_phase is IsolationPhase.IDLE:
-            pass
-
-        else:
-            raise NotImplementedError(f'unknown isolation phase : {self._cur_isolator.next_phase}')

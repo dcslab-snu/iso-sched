@@ -7,9 +7,9 @@ import json
 import logging
 import sys
 import time
-from collections import deque
+from collections import Sized, deque
 from threading import Thread
-from typing import Deque, Dict, List, Set, Tuple, Type
+from typing import Deque, Dict, List, Tuple, Type
 
 import pika
 import psutil
@@ -17,7 +17,8 @@ from pika import BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import Basic
 
-from isolating_controller.isolation.policies import DiffWViolationPolicy, IsolationPolicy
+from isolating_controller.isolation import NextStep
+from isolating_controller.isolation.policies import DiffPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 
@@ -35,13 +36,17 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class PendingQueue:
+# FIXME: move
+class PendingQueue(Sized):
     def __init__(self, policy_type: Type[IsolationPolicy]) -> None:
         self._policy_type: Type[IsolationPolicy] = policy_type
 
         self._bg_q: Dict[Tuple[int, ...], Workload] = dict()
         self._fg_q: Dict[Tuple[int, ...], Workload] = dict()
         self._pending_list: List[IsolationPolicy] = list()
+
+    def __len__(self) -> int:
+        return len(self._pending_list)
 
     def add_bg(self, workload: Workload) -> None:
         logger = logging.getLogger(self.__class__.__name__)
@@ -73,16 +78,15 @@ class PendingQueue:
         else:
             self._fg_q[workload.cpuset] = workload
 
-    @property
-    def pending(self):
-        return self._pending_list
+    def pop(self):
+        return self._pending_list.pop()
 
 
 class MainController(metaclass=Singleton):
     def __init__(self, metric_buf_size: int):
         self._corun_metric_dict: Dict[int, Deque] = dict()
 
-        self._pending_wl = PendingQueue(DiffWViolationPolicy)
+        self._pending_wl = PendingQueue(DiffPolicy)
 
         self._metric_buf_size = metric_buf_size
 
@@ -100,10 +104,6 @@ class MainController(metaclass=Singleton):
     @property
     def pending_workloads(self) -> PendingQueue:
         return self._pending_wl
-
-    @property
-    def corun_metric_dict(self) -> Dict[int, Deque]:
-        return self._corun_metric_dict
 
     def delete_workload(self, pid: int):
         del self._corun_metric_dict[pid]
@@ -144,6 +144,7 @@ class MainController(metaclass=Singleton):
         ch.queue_declare(wl_queue_name)
         ch.basic_consume(functools.partial(self._cbk_wl_monitor, pid), wl_queue_name)
 
+    # FIXME: replace `pid` to Workload object for removing _corun_metric_dict
     def _cbk_wl_monitor(self, pid: int, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes):
         metric = json.loads(body.decode())
         ch.basic_ack(method.delivery_tag)
@@ -201,46 +202,73 @@ class ControlThread(Thread):
 
         self._interval = 2  #: Scheduling interval (2 sec.)
 
-        self._isolation_groups: Set[IsolationPolicy] = set()
+        self._isolation_groups: Dict[IsolationPolicy, int] = dict()
 
     def _isolate_workloads(self):
         logger = logging.getLogger(self.__class__.__name__)
-        for group in self._isolation_groups:
+
+        for group, iteration_num in self._isolation_groups.items():
             logger.info('')
-            logger.info(f'***************isolation of {group.name} #{group.iteration_num}***************')
-            logger.info(f'Current phase : {group.current_phase.name}')
+            logger.info(f'***************isolation of {group.name} #{iteration_num}***************')
 
             if group.new_isolator_needed:
                 group.choose_next_isolator()
+                group.cur_isolator \
+                    .increase() \
+                    .enforce()
                 continue
 
-            group.isolate()
+            cur_isolator = group.cur_isolator
+
+            monitoring = cur_isolator.monitoring_result()
+            logger.info(f'Monitoring Result : {monitoring.name}')
+
+            if monitoring is NextStep.INCREASE:
+                cur_isolator.increase()
+            elif monitoring is NextStep.DECREASE:
+                cur_isolator.decrease()
+            elif monitoring is NextStep.STOP:
+                group.set_idle_isolator()
+            else:
+                raise NotImplementedError(f'unknown isolation result : {monitoring}')
+
+            cur_isolator.enforce()
+
+            iteration_num += 1
 
     def _register_pending_workloads(self):
         """
-        This function detects and registers the spawned workloads(threads),
-        also deletes the finished workloads(threads) from the dict.
+        This function detects and registers the spawned workloads(threads).
+        """
+        logger = logging.getLogger(self.__class__.__name__)
+
+        # set pending workloads as active
+        while len(self.parent.pending_workloads):
+            # FIXME: rename
+            new_group: IsolationPolicy = self.parent.pending_workloads.pop()
+            logger.info(f'{new_group} is created')
+
+            self._isolation_groups[new_group] = 0
+
+    def _remove_ended_groups(self) -> None:
+        """
+        deletes the finished workloads(threads) from the dict.
         """
         logger = logging.getLogger(self.__class__.__name__)
 
         ended = tuple(filter(lambda g: g.ended, self._isolation_groups))
 
         for group in ended:
-            fg_workload = group.foreground_workload
-            logger.info(f'workload {fg_workload.name} (pid: {fg_workload.pid}) is ended')
-            # TODO: deallocate isolation groups
+            if group.foreground_workload.is_running:
+                ended_workload = group.background_workload
+            else:
+                ended_workload = group.foreground_workload
+            logger.info(f'workload {ended_workload.name} (pid: {ended_workload.pid}) is ended')
 
             # remove from containers
-            self._isolation_groups.remove(group)
+            del self._isolation_groups[group]
             self.parent.delete_workload(group.foreground_workload.pid)
             self.parent.delete_workload(group.background_workload.pid)
-
-        # set pending workloads as active
-        while len(self.parent.pending_workloads.pending):
-            new_wl: IsolationPolicy = self.parent.pending_workloads.pending.pop()
-            logger.info(f'{new_wl} is created')
-            new_wl.choose_next_isolator()
-            self._isolation_groups.add(new_wl)
 
     def run(self):
         logger = logging.getLogger(self.__class__.__name__)
@@ -248,6 +276,7 @@ class ControlThread(Thread):
         logger.info('starting isolation loop')
 
         while True:
+            self._remove_ended_groups()
             self._register_pending_workloads()
 
             time.sleep(self._interval)
