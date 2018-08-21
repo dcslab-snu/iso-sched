@@ -187,6 +187,7 @@ class ControlThread(Thread):
             logger.info(f'{pending_group} is created')
 
             self._isolation_groups[pending_group] = 0
+            pending_group.init_isolators()
 
     def _remove_ended_groups(self) -> None:
         """

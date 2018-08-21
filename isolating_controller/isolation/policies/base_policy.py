@@ -14,15 +14,18 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._fg_wl = fg_wl
         self._bg_wl = bg_wl
 
-        self._isolator_map: Mapping[Type[Isolator], Isolator] = dict((
-            (CacheIsolator, CacheIsolator(fg_wl, bg_wl)),
-            (MemoryIsolator, MemoryIsolator(fg_wl, bg_wl)),
-            (SchedIsolator, SchedIsolator(fg_wl, bg_wl))
-        ))
+        self._isolator_map: Mapping[Type[Isolator], Isolator] = dict()
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
     def __hash__(self) -> int:
         return self._fg_wl.pid
+
+    def init_isolators(self) -> None:
+        self._isolator_map = dict((
+            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
+            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
+            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl))
+        ))
 
     @property
     @abstractmethod
