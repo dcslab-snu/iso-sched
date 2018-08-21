@@ -20,7 +20,7 @@ class MemoryIsolator(Isolator):
         # FIXME: hard coded
         self._cur_step = DVFS.MAX
 
-    def __del__(self):
+    def __del__(self) -> None:
         DVFS.set_freq(DVFS.MAX, self._fg_affinity)
         DVFS.set_freq(DVFS.MAX, self._bg_affinity)
 

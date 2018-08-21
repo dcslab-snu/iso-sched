@@ -25,7 +25,7 @@ class SchedIsolator(Isolator):
         # FIXME: hard coded
         CgroupCpuset.assign(str(background_wl.pid), set(range(self._cur_step, 32)))
 
-    def __del__(self):
+    def __del__(self) -> None:
         if self._foreground_wl.is_running:
             ended = self._fg_pid
             running = self._bg_pid

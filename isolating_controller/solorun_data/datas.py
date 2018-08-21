@@ -9,7 +9,7 @@ from ..metric_container.basic_metric import BasicMetric
 data_map: Dict[str, BasicMetric] = dict()
 
 
-def _init():
+def _init() -> None:
     for data in Path(__file__).parent.iterdir():  # type: Path
         if data.match('*.json'):
             metric = json.loads(data.read_text())

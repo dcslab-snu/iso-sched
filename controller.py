@@ -37,7 +37,7 @@ class Singleton(type):
 
 
 class MainController(metaclass=Singleton):
-    def __init__(self, metric_buf_size: int):
+    def __init__(self, metric_buf_size: int) -> None:
         self._pending_wl = PendingQueue(DiffPolicy)
 
         self._metric_buf_size = metric_buf_size
@@ -49,7 +49,7 @@ class MainController(metaclass=Singleton):
 
         self._control_thread = ControlThread(self._pending_wl)
 
-    def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes):
+    def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
         logger = logging.getLogger(self.__class__.__name__)
 
         ch.basic_ack(method.delivery_tag)
@@ -83,7 +83,7 @@ class MainController(metaclass=Singleton):
         ch.basic_consume(functools.partial(self._cbk_wl_monitor, workload), wl_queue_name)
 
     def _cbk_wl_monitor(self, workload: Workload,
-                        ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes):
+                        ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
         metric = json.loads(body.decode())
         ch.basic_ack(method.delivery_tag)
 
@@ -112,7 +112,7 @@ class MainController(metaclass=Singleton):
 
         metric_que.appendleft(item)
 
-    def run(self):
+    def run(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
 
         self._control_thread.start()
@@ -130,7 +130,7 @@ class MainController(metaclass=Singleton):
 
 
 class ControlThread(Thread):
-    def __init__(self, pending_queue: PendingQueue):
+    def __init__(self, pending_queue: PendingQueue) -> None:
         Thread.__init__(self)
         self.daemon = True
 
@@ -140,7 +140,7 @@ class ControlThread(Thread):
 
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
 
-    def _isolate_workloads(self):
+    def _isolate_workloads(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
 
         for group, iteration_num in self._isolation_groups.items():
@@ -175,7 +175,7 @@ class ControlThread(Thread):
             finally:
                 self._isolation_groups[group] += 1
 
-    def _register_pending_workloads(self):
+    def _register_pending_workloads(self) -> None:
         """
         This function detects and registers the spawned workloads(threads).
         """
@@ -206,7 +206,7 @@ class ControlThread(Thread):
             # remove from containers
             del self._isolation_groups[group]
 
-    def run(self):
+    def run(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
 
         logger.info('starting isolation loop')
@@ -220,7 +220,7 @@ class ControlThread(Thread):
             self._isolate_workloads()
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='Run workloads that given by parameter.')
     parser.add_argument('-b', '--metric-buf-size', dest='buf_size', default='50', type=int,
                         help='metric buffer size per thread. (default : 50)')

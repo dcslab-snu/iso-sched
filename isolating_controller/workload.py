@@ -1,10 +1,10 @@
 # coding: UTF-8
 
+from collections import deque
 from itertools import chain
 
 import cpuinfo
 import psutil
-from collections import deque
 from typing import Deque, Tuple
 
 from .metric_container.basic_metric import BasicMetric, MetricDiff
@@ -20,7 +20,7 @@ class Workload:
     ControlThread schedules the groups of `Workload' instances to enforce their scheduling decisions
     """
 
-    def __init__(self, name: str, pid: int, perf_pid: int, perf_interval: int):
+    def __init__(self, name: str, pid: int, perf_pid: int, perf_interval: int) -> None:
         self._name = name
         self._pid = pid
         self._corun_metrics: Deque[BasicMetric] = deque()
@@ -28,10 +28,10 @@ class Workload:
 
         self._proc_info = psutil.Process(pid)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return 'Workload (pid: {}, perf_pid: {})'.format(self._pid, self._perf_pid)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
     @property
@@ -43,7 +43,7 @@ class Workload:
         return self._pid
 
     @property
-    def corun_metrics(self):
+    def corun_metrics(self) -> Deque[BasicMetric]:
         return self._corun_metrics
 
     @property

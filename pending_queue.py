@@ -48,5 +48,5 @@ class PendingQueue(Sized):
         else:
             self._fg_q[workload.cpuset] = workload
 
-    def pop(self):
+    def pop(self) -> IsolationPolicy:
         return self._pending_list.pop()
