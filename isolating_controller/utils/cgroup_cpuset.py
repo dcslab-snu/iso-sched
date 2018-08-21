@@ -28,13 +28,6 @@ class CgroupCpuset:
 
     @staticmethod
     def remove_group(name: str) -> None:
-        with open(f'/sys/fs/cgroup/cpuset/{name}/tasks') as fp:
-            tasks = map(int, fp.readlines())
-
-        for tid in tasks:
-            subprocess.run(args=('sudo', 'tee', '-a', f'{CgroupCpuset.MOUNT_POINT}/tasks'),
-                           input=f'{tid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
-
         subprocess.check_call(args=('sudo', 'rmdir', f'/sys/fs/cgroup/cpuset/{name}'))
 
     @staticmethod

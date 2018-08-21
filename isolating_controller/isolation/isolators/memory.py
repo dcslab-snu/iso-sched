@@ -14,8 +14,15 @@ class MemoryIsolator(Isolator):
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
+        self._fg_affinity = foreground_wl.cpuset
+        self._bg_affinity = background_wl.cpuset
+
         # FIXME: hard coded
         self._cur_step = DVFS.MAX
+
+    def __del__(self):
+        DVFS.set_freq(DVFS.MAX, self._fg_affinity)
+        DVFS.set_freq(DVFS.MAX, self._bg_affinity)
 
     def increase(self) -> 'MemoryIsolator':
         self._cur_step -= DVFS.STEP

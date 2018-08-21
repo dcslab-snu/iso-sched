@@ -208,33 +208,36 @@ class ControlThread(Thread):
         logger = logging.getLogger(self.__class__.__name__)
 
         for group, iteration_num in self._isolation_groups.items():
-            logger.info('')
-            logger.info(f'***************isolation of {group.name} #{iteration_num}***************')
+            try:
+                logger.info('')
+                logger.info(f'***************isolation of {group.name} #{iteration_num}***************')
 
-            if group.new_isolator_needed:
-                group.choose_next_isolator()
-                group.cur_isolator \
-                    .increase() \
-                    .enforce()
-                continue
+                if group.new_isolator_needed:
+                    group.choose_next_isolator()
+                    group.cur_isolator.enforce()
+                    continue
 
-            cur_isolator = group.cur_isolator
+                cur_isolator = group.cur_isolator
 
-            monitoring = cur_isolator.monitoring_result()
-            logger.info(f'Monitoring Result : {monitoring.name}')
+                monitoring = cur_isolator.monitoring_result()
+                logger.info(f'Monitoring Result : {monitoring.name}')
 
-            if monitoring is NextStep.INCREASE:
-                cur_isolator.increase()
-            elif monitoring is NextStep.DECREASE:
-                cur_isolator.decrease()
-            elif monitoring is NextStep.STOP:
-                group.set_idle_isolator()
-            else:
-                raise NotImplementedError(f'unknown isolation result : {monitoring}')
+                if monitoring is NextStep.INCREASE:
+                    cur_isolator.increase()
+                elif monitoring is NextStep.DECREASE:
+                    cur_isolator.decrease()
+                elif monitoring is NextStep.STOP:
+                    group.set_idle_isolator()
+                else:
+                    raise NotImplementedError(f'unknown isolation result : {monitoring}')
 
-            cur_isolator.enforce()
+                cur_isolator.enforce()
 
-            iteration_num += 1
+            except psutil.NoSuchProcess:
+                pass
+
+            finally:
+                self._isolation_groups[group] += 1
 
     def _register_pending_workloads(self):
         """
