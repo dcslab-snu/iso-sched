@@ -28,7 +28,7 @@ class CacheIsolator(Isolator):
         for tid in background_wl.all_child_tid():
             CAT.add_task(background_group, tid)
 
-    def increase(self) -> 'CacheIsolator':
+    def strengthen(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
 
         if self._cur_step is None:
@@ -38,7 +38,7 @@ class CacheIsolator(Isolator):
 
         return self
 
-    def decrease(self) -> 'CacheIsolator':
+    def weaken(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
 
         if self._cur_step is not None:
@@ -97,11 +97,11 @@ class CacheIsolator(Isolator):
             if self._cur_step is None or self._cur_step - CAT.STEP <= CAT.MIN:
                 return NextStep.STOP
             else:
-                return NextStep.DECREASE
+                return NextStep.WEAKEN
 
         else:
             # FIXME: hard coded
             if self._cur_step is None or CAT.MAX <= self._cur_step + CAT.STEP:
                 return NextStep.STOP
             else:
-                return NextStep.INCREASE
+                return NextStep.STRENGTHEN

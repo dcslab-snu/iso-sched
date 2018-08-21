@@ -15,14 +15,12 @@ class Isolator(metaclass=ABCMeta):
         self._foreground_wl = foreground_wl
         self._background_wl = background_wl
 
-    # FIXME: rename
     @abstractmethod
-    def increase(self) -> 'Isolator':
+    def strengthen(self) -> 'Isolator':
         pass
 
-    # FIXME: rename
     @abstractmethod
-    def decrease(self) -> 'Isolator':
+    def weaken(self) -> 'Isolator':
         pass
 
     @abstractmethod

@@ -20,15 +20,15 @@ class MemoryIsolator(Isolator):
         # FIXME: hard coded
         self._cur_step = DVFS.MAX
 
-    def __del__(self):
+    def __del__(self) -> None:
         DVFS.set_freq(DVFS.MAX, self._fg_affinity)
         DVFS.set_freq(DVFS.MAX, self._bg_affinity)
 
-    def increase(self) -> 'MemoryIsolator':
+    def strengthen(self) -> 'MemoryIsolator':
         self._cur_step -= DVFS.STEP
         return self
 
-    def decrease(self) -> 'MemoryIsolator':
+    def weaken(self) -> 'MemoryIsolator':
         self._cur_step += DVFS.STEP
         return self
 
@@ -61,11 +61,11 @@ class MemoryIsolator(Isolator):
             if DVFS.MAX <= self._cur_step - DVFS.STEP:
                 return NextStep.STOP
             else:
-                return NextStep.DECREASE
+                return NextStep.WEAKEN
 
         else:
             # FIXME: hard coded
             if self._cur_step - DVFS.STEP <= DVFS.MIN:
                 return NextStep.STOP
             else:
-                return NextStep.INCREASE
+                return NextStep.STRENGTHEN
