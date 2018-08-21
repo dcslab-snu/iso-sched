@@ -1,7 +1,7 @@
 # coding: UTF-8
 
 import logging
-from typing import Type, Dict, Tuple, List, Sized
+from typing import Dict, List, Sized, Tuple, Type
 
 from isolating_controller.isolation.policies import IsolationPolicy
 from isolating_controller.workload import Workload

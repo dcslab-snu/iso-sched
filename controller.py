@@ -20,7 +20,7 @@ from isolating_controller.isolation import NextStep
 from isolating_controller.isolation.policies import DiffPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
-from .pending_queue import PendingQueue
+from pending_queue import PendingQueue
 
 MIN_PYTHON = (3, 6)
 
