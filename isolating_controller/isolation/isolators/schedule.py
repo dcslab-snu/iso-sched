@@ -44,11 +44,11 @@ class SchedIsolator(Isolator):
 
         CgroupCpuset.remove_group(str(running))
 
-    def increase(self) -> 'SchedIsolator':
+    def strengthen(self) -> 'SchedIsolator':
         self._cur_step += 1
         return self
 
-    def decrease(self) -> 'SchedIsolator':
+    def weaken(self) -> 'SchedIsolator':
         self._cur_step -= 1
         return self
 
@@ -80,7 +80,7 @@ class SchedIsolator(Isolator):
             return NextStep.STOP
 
         elif curr_diff > 0:
-            return NextStep.DECREASE
+            return NextStep.WEAKEN
 
         else:
-            return NextStep.INCREASE
+            return NextStep.STRENGTHEN

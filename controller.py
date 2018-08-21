@@ -158,10 +158,10 @@ class ControlThread(Thread):
                 monitoring = cur_isolator.monitoring_result()
                 logger.info(f'Monitoring Result : {monitoring.name}')
 
-                if monitoring is NextStep.INCREASE:
-                    cur_isolator.increase()
-                elif monitoring is NextStep.DECREASE:
-                    cur_isolator.decrease()
+                if monitoring is NextStep.STRENGTHEN:
+                    cur_isolator.strengthen()
+                elif monitoring is NextStep.WEAKEN:
+                    cur_isolator.weaken()
                 elif monitoring is NextStep.STOP:
                     group.set_idle_isolator()
                 else:
@@ -183,11 +183,10 @@ class ControlThread(Thread):
 
         # set pending workloads as active
         while len(self._pending_queue):
-            # FIXME: rename
-            new_group: IsolationPolicy = self._pending_queue.pop()
-            logger.info(f'{new_group} is created')
+            pending_group: IsolationPolicy = self._pending_queue.pop()
+            logger.info(f'{pending_group} is created')
 
-            self._isolation_groups[new_group] = 0
+            self._isolation_groups[pending_group] = 0
 
     def _remove_ended_groups(self) -> None:
         """

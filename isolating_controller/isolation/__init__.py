@@ -3,8 +3,7 @@
 from enum import IntEnum
 
 
-# FIXME: rename
 class NextStep(IntEnum):
-    INCREASE = 1
-    DECREASE = 2
+    STRENGTHEN = 1
+    WEAKEN = 2
     STOP = 3

@@ -50,11 +50,6 @@ class Workload:
     def cpuset(self) -> Tuple[int, ...]:
         return tuple(self._proc_info.cpu_affinity())
 
-    # TODO: remove
-    @property
-    def num_threads(self) -> int:
-        return self._proc_info.num_threads()
-
     @property
     def perf_pid(self) -> int:
         return self._perf_pid

@@ -14,10 +14,10 @@ class IdleIsolator(Isolator):
     def monitoring_result(self) -> NextStep:
         pass
 
-    def increase(self) -> 'IdleIsolator':
+    def strengthen(self) -> 'IdleIsolator':
         return self
 
-    def decrease(self) -> 'IdleIsolator':
+    def weaken(self) -> 'IdleIsolator':
         return self
 
     def _enforce(self) -> None:
