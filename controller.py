@@ -38,15 +38,12 @@ class Singleton(type):
 
 class MainController(metaclass=Singleton):
     def __init__(self, metric_buf_size: int) -> None:
-        self._pending_wl = PendingQueue(DiffPolicy)
-
         self._metric_buf_size = metric_buf_size
 
-        self._connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-        self._channel = self._connection.channel()
+        self._rmq_host = 'localhost'
+        self._rmq_creation_queue = 'workload_creation'
 
-        self._creation_queue = 'workload_creation'
-
+        self._pending_wl = PendingQueue(DiffPolicy)
         self._control_thread = ControlThread(self._pending_wl)
 
     def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
@@ -117,16 +114,19 @@ class MainController(metaclass=Singleton):
 
         self._control_thread.start()
 
-        self._channel.queue_declare(self._creation_queue)
-        self._channel.basic_consume(self._cbk_wl_creation, self._creation_queue)
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=self._rmq_host))
+        channel = connection.channel()
+
+        channel.queue_declare(self._rmq_creation_queue)
+        channel.basic_consume(self._cbk_wl_creation, self._rmq_creation_queue)
 
         try:
             logger.info('starting consuming thread')
-            self._channel.start_consuming()
+            channel.start_consuming()
 
         except KeyboardInterrupt:
-            self._channel.close()
-            self._connection.close()
+            channel.close()
+            connection.close()
 
 
 class ControlThread(Thread):
