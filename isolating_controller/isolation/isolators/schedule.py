@@ -15,8 +15,7 @@ class SchedIsolator(Isolator):
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
-        self._fg_pid = foreground_wl.pid
-        self._bg_pid = background_wl.pid
+        self._prev_bg_affinity = background_wl.cpuset
         # FIXME: hard coded
         self._cur_step = 24
 
@@ -26,23 +25,8 @@ class SchedIsolator(Isolator):
         CgroupCpuset.assign(str(background_wl.pid), set(range(self._cur_step, 32)))
 
     def __del__(self) -> None:
-        if self._foreground_wl.is_running:
-            ended = self._fg_pid
-            running = self._bg_pid
-        else:
-            ended = self._bg_pid
-            running = self._fg_pid
-
-        CgroupCpuset.remove_group(str(ended))
-
-        with open(f'/sys/fs/cgroup/cpuset/{running}/tasks') as fp:
-            tasks = map(int, fp.readlines())
-
-        for tid in tasks:
-            subprocess.run(args=('sudo', 'tee', '-a', f'{CgroupCpuset.MOUNT_POINT}/tasks'),
-                           input=f'{tid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
-
-        CgroupCpuset.remove_group(str(running))
+        if self._background_wl.is_running:
+            CgroupCpuset.assign(str(self._background_wl.pid), set(self._prev_bg_affinity))
 
     def strengthen(self) -> 'SchedIsolator':
         self._cur_step += 1
