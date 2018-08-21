@@ -51,15 +51,18 @@ class CacheIsolator(Isolator):
 
     def _enforce(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
-        logger.info(f'foreground : background = {self._cur_step} : {CAT.MAX - self._cur_step}')
 
         if self._cur_step is None:
+            logger.info(f'turn off CAT')
+
             # FIXME: hard coded
             mask = CAT.gen_mask(0, CAT.MAX)
             CAT.assign(str(self._foreground_wl.pid), '1', mask)
             CAT.assign(str(self._background_wl.pid), '1', mask)
 
         else:
+            logger.info(f'foreground : background = {self._cur_step} : {CAT.MAX - self._cur_step}')
+
             # FIXME: hard coded
             fg_mask = CAT.gen_mask(0, self._cur_step)
             CAT.assign(str(self._foreground_wl.pid), '1', fg_mask)
@@ -83,7 +86,8 @@ class CacheIsolator(Isolator):
 
         self._prev_metric_diff = metric_diff
 
-        if not (CAT.MIN < self._cur_step < CAT.MAX) \
+        if self._cur_step is not None \
+                and not (CAT.MIN < self._cur_step < CAT.MAX) \
                 or abs(diff_of_diff) <= CacheIsolator._THRESHOLD \
                 or abs(curr_diff) <= CacheIsolator._THRESHOLD:
             return NextStep.STOP
