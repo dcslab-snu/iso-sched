@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 # coding: UTF-8
 
+import sys
+import time
+
 import argparse
 import functools
 import json
 import logging
-import sys
-import time
-from collections import Sized, deque
-from threading import Thread
-from typing import Deque, Dict, List, Tuple, Type
-
 import pika
 import psutil
 from pika import BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import Basic
+from threading import Thread
+from typing import Dict
 
 from isolating_controller.isolation import NextStep
 from isolating_controller.isolation.policies import DiffPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
+from .pending_queue import PendingQueue
 
 MIN_PYTHON = (3, 6)
 
@@ -36,56 +36,8 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-# FIXME: move
-class PendingQueue(Sized):
-    def __init__(self, policy_type: Type[IsolationPolicy]) -> None:
-        self._policy_type: Type[IsolationPolicy] = policy_type
-
-        self._bg_q: Dict[Tuple[int, ...], Workload] = dict()
-        self._fg_q: Dict[Tuple[int, ...], Workload] = dict()
-        self._pending_list: List[IsolationPolicy] = list()
-
-    def __len__(self) -> int:
-        return len(self._pending_list)
-
-    def add_bg(self, workload: Workload) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
-        logger.info(f'{workload.name} (pid: {workload.pid}) is ready for active as Background')
-
-        # FIXME: hard coded
-        other_cpuset = tuple(map(lambda x: x - 8, workload.cpuset))
-
-        if other_cpuset in self._fg_q:
-            new_group = self._policy_type(self._fg_q[other_cpuset], workload)
-            self._pending_list.append(new_group)
-            del self._fg_q[other_cpuset]
-
-        else:
-            self._bg_q[workload.cpuset] = workload
-
-    def add_fg(self, workload: Workload) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
-        logger.info(f'{workload.name} (pid: {workload.pid}) is ready for active as Foreground')
-
-        # FIXME: hard coded
-        other_cpuset = tuple(map(lambda x: x + 8, workload.cpuset))
-
-        if other_cpuset in self._bg_q:
-            new_group = self._policy_type(self._bg_q[other_cpuset], workload)
-            self._pending_list.append(new_group)
-            del self._bg_q[other_cpuset]
-
-        else:
-            self._fg_q[workload.cpuset] = workload
-
-    def pop(self):
-        return self._pending_list.pop()
-
-
 class MainController(metaclass=Singleton):
     def __init__(self, metric_buf_size: int):
-        self._corun_metric_dict: Dict[int, Deque] = dict()
-
         self._pending_wl = PendingQueue(DiffPolicy)
 
         self._metric_buf_size = metric_buf_size
@@ -95,18 +47,7 @@ class MainController(metaclass=Singleton):
 
         self._creation_queue = 'workload_creation'
 
-        self._control_thread = ControlThread(self)
-
-    @property
-    def metric_buf_size(self) -> int:
-        return self._metric_buf_size
-
-    @property
-    def pending_workloads(self) -> PendingQueue:
-        return self._pending_wl
-
-    def delete_workload(self, pid: int):
-        del self._corun_metric_dict[pid]
+        self._control_thread = ControlThread(self._pending_wl)
 
     def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes):
         logger = logging.getLogger(self.__class__.__name__)
@@ -127,10 +68,7 @@ class MainController(metaclass=Singleton):
         if not psutil.pid_exists(pid):
             return
 
-        corun_q = deque()
-        self._corun_metric_dict[pid] = corun_q
-
-        workload = Workload(wl_name, pid, perf_pid, corun_q, perf_interval)
+        workload = Workload(wl_name, pid, perf_pid, perf_interval)
 
         # FIXME: hard coded
         if wl_name == 'SP':
@@ -142,10 +80,10 @@ class MainController(metaclass=Singleton):
 
         wl_queue_name = '{}({})'.format(wl_name, pid)
         ch.queue_declare(wl_queue_name)
-        ch.basic_consume(functools.partial(self._cbk_wl_monitor, pid), wl_queue_name)
+        ch.basic_consume(functools.partial(self._cbk_wl_monitor, workload), wl_queue_name)
 
-    # FIXME: replace `pid` to Workload object for removing _corun_metric_dict
-    def _cbk_wl_monitor(self, pid: int, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes):
+    def _cbk_wl_monitor(self, workload: Workload,
+                        ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes):
         metric = json.loads(body.decode())
         ch.basic_ack(method.delivery_tag)
 
@@ -167,13 +105,12 @@ class MainController(metaclass=Singleton):
 
         logger.debug(f'{metric} is given from ')
 
-        if pid not in self._corun_metric_dict:
-            return
+        metric_que = workload.corun_metrics
 
-        if len(self._corun_metric_dict[pid]) == self._metric_buf_size:
-            self._corun_metric_dict[pid].pop()
+        if len(metric_que) == self._metric_buf_size:
+            metric_que.pop()
 
-        self._corun_metric_dict[pid].appendleft(item)
+        metric_que.appendleft(item)
 
     def run(self):
         logger = logging.getLogger(self.__class__.__name__)
@@ -193,14 +130,13 @@ class MainController(metaclass=Singleton):
 
 
 class ControlThread(Thread):
-    def __init__(self, parent: MainController):
+    def __init__(self, pending_queue: PendingQueue):
         Thread.__init__(self)
         self.daemon = True
 
-        # FIXME
-        self.parent: MainController = parent
+        self._pending_queue: PendingQueue = pending_queue
 
-        self._interval = 2  #: Scheduling interval (2 sec.)
+        self._interval: int = 2  #: Scheduling interval (2 sec.)
 
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
 
@@ -246,9 +182,9 @@ class ControlThread(Thread):
         logger = logging.getLogger(self.__class__.__name__)
 
         # set pending workloads as active
-        while len(self.parent.pending_workloads):
+        while len(self._pending_queue):
             # FIXME: rename
-            new_group: IsolationPolicy = self.parent.pending_workloads.pop()
+            new_group: IsolationPolicy = self._pending_queue.pop()
             logger.info(f'{new_group} is created')
 
             self._isolation_groups[new_group] = 0
@@ -270,8 +206,6 @@ class ControlThread(Thread):
 
             # remove from containers
             del self._isolation_groups[group]
-            self.parent.delete_workload(group.foreground_workload.pid)
-            self.parent.delete_workload(group.background_workload.pid)
 
     def run(self):
         logger = logging.getLogger(self.__class__.__name__)
