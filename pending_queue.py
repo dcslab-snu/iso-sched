@@ -3,8 +3,8 @@
 import logging
 from typing import Type, Dict, Tuple, List, Sized
 
-from isolation.policies import IsolationPolicy
-from workload import Workload
+from isolating_controller.isolation.policies import IsolationPolicy
+from isolating_controller.workload import Workload
 
 
 class PendingQueue(Sized):
