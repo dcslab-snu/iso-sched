@@ -1,6 +1,7 @@
 # coding: UTF-8
 
 import logging
+from itertools import chain
 
 from .base_isolator import Isolator
 from .. import NextStep
@@ -21,8 +22,7 @@ class MemoryIsolator(Isolator):
         self._cur_step = DVFS.MAX
 
     def __del__(self) -> None:
-        DVFS.set_freq(DVFS.MAX, self._fg_affinity)
-        DVFS.set_freq(DVFS.MAX, self._bg_affinity)
+        DVFS.set_freq(DVFS.MAX, chain(self._fg_affinity, self._bg_affinity))
 
     def strengthen(self) -> 'MemoryIsolator':
         self._cur_step -= DVFS.STEP
