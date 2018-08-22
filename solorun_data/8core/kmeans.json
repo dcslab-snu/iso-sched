@@ -7,7 +7,7 @@
 	"instructions": 2909887584.77,
 	"cycles": 1955192800.99,
 	"stall_cycles": 734271037.18,
-	"tsc_rate": 6186278816,
+	"wall_cycles": 6186278816,
 	"intra_coh": 25435251.64,
 	"inter_coh": 0.04,
 	"llc_size": 38270827.26,

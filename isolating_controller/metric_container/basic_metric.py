@@ -4,13 +4,13 @@ from time import localtime, strftime
 
 
 class BasicMetric:
-    def __init__(self, l2miss, l3miss_load, l3miss, inst, cycles, stall_cycles, tsc_rate,
+    def __init__(self, l2miss, l3miss_load, l3miss, inst, cycles, stall_cycles, wall_cycles,
                  intra_coh, inter_coh, llc_size, local_mem, remote_mem, req_num=None):
         self._l2miss = l2miss
         self._l3miss_load = l3miss_load
         self._l3miss = l3miss
         self._instructions = inst
-        self._tsc_rate = tsc_rate
+        self._wall_cycles = wall_cycles
         self._cycles = cycles
         self._stall_cycles = stall_cycles
         self._intra_coh = intra_coh

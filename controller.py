@@ -87,15 +87,15 @@ class MainController(metaclass=Singleton):
         logger = logging.getLogger(self.__class__.__name__)
 
         item = BasicMetric(metric['l2miss'],
-                           metric['r1b2'],
+                           metric['l3miss_load'],
                            metric['l3miss'],
                            metric['instructions'],
                            metric['cycles'],
                            metric['stall_cycles'],
-                           metric['wall-cycles'],
+                           metric['wall_cycles'],
                            metric['intra_coh'],
                            metric['inter_coh'],
-                           metric['llc_occupancy'],
+                           metric['llc_size'],
                            metric['local_mem'],
                            metric['remote_mem'],
                            metric['req_num'])
