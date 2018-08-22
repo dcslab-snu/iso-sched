@@ -18,12 +18,12 @@ class CacheIsolator(Isolator):
         self._prev_step: Optional[int] = None
         self._cur_step: Optional[int] = None
 
-        foreground_group = str(foreground_wl.pid)
+        foreground_group = str(foreground_wl.name)+'_'+str(foreground_wl.pid)
         CAT.create_group(foreground_group)
         for tid in foreground_wl.all_child_tid():
             CAT.add_task(foreground_group, tid)
 
-        background_group = str(background_wl.pid)
+        background_group = str(background_wl.name)+'_'+str(background_wl.pid)
         CAT.create_group(background_group)
         for tid in background_wl.all_child_tid():
             CAT.add_task(background_group, tid)
@@ -52,24 +52,27 @@ class CacheIsolator(Isolator):
     def _enforce(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
 
+        foreground_group = str(self._foreground_wl.name)+'_'+str(self._foreground_wl.pid)
+        background_group = str(self._background_wl.name)+'_'+str(self._background_wl.pid)
+
         if self._cur_step is None:
             logger.info(f'turn off CAT')
 
             # FIXME: hard coded
             mask = CAT.gen_mask(0, CAT.MAX)
-            CAT.assign(str(self._foreground_wl.pid), '1', mask)
-            CAT.assign(str(self._background_wl.pid), '1', mask)
+            CAT.assign(foreground_group, '1', mask)
+            CAT.assign(background_group, '1', mask)
 
         else:
             logger.info(f'foreground : background = {self._cur_step} : {CAT.MAX - self._cur_step}')
 
             # FIXME: hard coded
             fg_mask = CAT.gen_mask(0, self._cur_step)
-            CAT.assign(str(self._foreground_wl.pid), '1', fg_mask)
+            CAT.assign(foreground_group, '1', fg_mask)
 
             # FIXME: hard coded
             bg_mask = CAT.gen_mask(self._cur_step)
-            CAT.assign(str(self._background_wl.pid), '1', bg_mask)
+            CAT.assign(background_group, '1', bg_mask)
 
     # TODO: consider turn off cache partitioning
     def monitoring_result(self) -> NextStep:

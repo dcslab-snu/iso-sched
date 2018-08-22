@@ -20,18 +20,19 @@ class SchedIsolator(Isolator):
         # FIXME: hard coded
         self._cur_step = 24
 
-        CgroupCpuset.create_group(str(background_wl.pid))
-        CgroupCpuset.add_task(str(background_wl.pid), background_wl.pid)
+        background_group = str(background_wl.name)+'_'+str(background_wl.pid)
+        CgroupCpuset.create_group(background_group)
+        CgroupCpuset.add_task(background_group, background_wl.pid)
         # FIXME: hard coded
-        CgroupCpuset.assign(str(background_wl.pid), set(range(self._cur_step, 32)))
+        CgroupCpuset.assign(background_group, set(range(self._cur_step, 32)))
 
     def __del__(self) -> None:
         if self._foreground_wl.is_running:
-            ended = self._fg_pid
-            running = self._bg_pid
+            ended = self._foreground_wl.name+'-'+self._fg_pid
+            running = self._background_wl.name+'-'+self._bg_pid
         else:
-            ended = self._bg_pid
-            running = self._fg_pid
+            ended = self._background_wl.name+'-'+self._bg_pid
+            running = self._foreground_wl.name+'-'+self._fg_pid
 
         CgroupCpuset.remove_group(str(ended))
 
@@ -58,7 +59,8 @@ class SchedIsolator(Isolator):
         logger.info(f'affinity of background is {self._cur_step}-31')
 
         # FIXME: hard coded
-        CgroupCpuset.assign(str(self._background_wl.pid), set(range(self._cur_step, 32)))
+        background_group = str(self._background_wl.name)+'_'+str(self._background_wl.pid)
+        CgroupCpuset.assign(background_group, set(range(self._cur_step, 32)))
 
     def monitoring_result(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
