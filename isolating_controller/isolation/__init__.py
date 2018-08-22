@@ -7,3 +7,4 @@ class NextStep(IntEnum):
     STRENGTHEN = 1
     WEAKEN = 2
     STOP = 3
+    IDLE = 4

@@ -11,8 +11,8 @@ class IdleIsolator(Isolator):
     def enforce(self) -> None:
         pass
 
-    def monitoring_result(self) -> NextStep:
-        pass
+    def _monitoring_result(self) -> NextStep:
+        return NextStep.IDLE
 
     def strengthen(self) -> 'IdleIsolator':
         return self
