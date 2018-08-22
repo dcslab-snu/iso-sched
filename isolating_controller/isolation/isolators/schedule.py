@@ -20,20 +20,22 @@ class SchedIsolator(Isolator):
         # FIXME: hard coded
         self._cur_step = 24
 
-        CgroupCpuset.create_group(str(background_wl.pid))
-        CgroupCpuset.add_task(str(background_wl.pid), background_wl.pid)
+        self._bg_grp_name = f'{background_wl.name}_{background_wl.pid}'
+
+        CgroupCpuset.create_group(self._bg_grp_name)
+        CgroupCpuset.add_task(self._bg_grp_name, background_wl.pid)
         # FIXME: hard coded
-        CgroupCpuset.assign(str(background_wl.pid), set(range(self._cur_step, 32)))
+        CgroupCpuset.assign(self._bg_grp_name, set(range(self._cur_step, 32)))
 
     def __del__(self) -> None:
         if self._foreground_wl.is_running:
-            ended = self._fg_pid
-            running = self._bg_pid
+            ended = self._foreground_wl.name + '_' + self._fg_pid
+            running = self._background_wl.name + '_' + self._bg_pid
         else:
-            ended = self._bg_pid
-            running = self._fg_pid
+            ended = self._background_wl.name + '_' + self._bg_pid
+            running = self._foreground_wl.name + '_' + self._fg_pid
 
-        CgroupCpuset.remove_group(str(ended))
+        CgroupCpuset.remove_group(ended)
 
         with open(f'/sys/fs/cgroup/cpuset/{running}/tasks') as fp:
             tasks = map(int, fp.readlines())
@@ -42,7 +44,7 @@ class SchedIsolator(Isolator):
             subprocess.run(args=('sudo', 'tee', '-a', f'{CgroupCpuset.MOUNT_POINT}/tasks'),
                            input=f'{tid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
 
-        CgroupCpuset.remove_group(str(running))
+        CgroupCpuset.remove_group(running)
 
     def strengthen(self) -> 'SchedIsolator':
         self._cur_step += 1
@@ -58,7 +60,7 @@ class SchedIsolator(Isolator):
         logger.info(f'affinity of background is {self._cur_step}-31')
 
         # FIXME: hard coded
-        CgroupCpuset.assign(str(self._background_wl.pid), set(range(self._cur_step, 32)))
+        CgroupCpuset.assign(self._bg_grp_name, set(range(self._cur_step, 32)))
 
     def monitoring_result(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()

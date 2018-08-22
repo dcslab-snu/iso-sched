@@ -20,7 +20,7 @@ def _init() -> None:
                                metric['instructions'],
                                metric['cycles'],
                                metric['stall_cycles'],
-                               metric['tsc_rate'],
+                               metric['wall_cycles'],
                                metric['intra_coh'],
                                metric['inter_coh'],
                                metric['llc_size'],
