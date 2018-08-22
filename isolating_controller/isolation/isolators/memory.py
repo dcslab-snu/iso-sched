@@ -32,13 +32,21 @@ class MemoryIsolator(Isolator):
         self._cur_step += DVFS.STEP
         return self
 
+    @property
+    def is_max_level(self) -> bool:
+        return self._cur_step == DVFS.MIN
+
+    @property
+    def is_min_level(self) -> bool:
+        return self._cur_step == DVFS.MAX
+
     def _enforce(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
         logger.info(f'frequency of cpuset {self._background_wl.cpuset} is {self._cur_step / 1_000_000}GHz')
 
         DVFS.set_freq(self._cur_step, self._background_wl.cpuset)
 
-    def monitoring_result(self) -> NextStep:
+    def _monitoring_result(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
 
         curr_diff = metric_diff.local_mem_util

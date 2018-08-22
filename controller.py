@@ -150,8 +150,6 @@ class ControlThread(Thread):
 
                 if group.new_isolator_needed:
                     group.choose_next_isolator()
-                    group.cur_isolator.enforce()
-                    continue
 
                 cur_isolator = group.cur_isolator
 

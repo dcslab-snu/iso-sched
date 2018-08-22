@@ -14,8 +14,20 @@ class Isolator(metaclass=ABCMeta):
         self._foreground_wl = foreground_wl
         self._background_wl = background_wl
 
+        self._force_strengthen: bool = True
+
     @abstractmethod
     def strengthen(self) -> 'Isolator':
+        pass
+
+    @property
+    @abstractmethod
+    def is_max_level(self) -> bool:
+        pass
+
+    @property
+    @abstractmethod
+    def is_min_level(self) -> bool:
         pass
 
     @abstractmethod
@@ -31,6 +43,20 @@ class Isolator(metaclass=ABCMeta):
 
         self._enforce()
 
+    def yield_isolation(self) -> None:
+        self._force_strengthen = True
+
     @abstractmethod
-    def monitoring_result(self) -> NextStep:
+    def _monitoring_result(self) -> NextStep:
         pass
+
+    def monitoring_result(self) -> NextStep:
+        if self._force_strengthen:
+            self._force_strengthen = False
+            if self.is_max_level:
+                return NextStep.STOP
+            else:
+                return NextStep.STRENGTHEN
+
+        else:
+            return self._monitoring_result()

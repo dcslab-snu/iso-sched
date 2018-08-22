@@ -20,5 +20,13 @@ class IdleIsolator(Isolator):
     def weaken(self) -> 'IdleIsolator':
         return self
 
+    @property
+    def is_max_level(self) -> bool:
+        return True
+
+    @property
+    def is_min_level(self) -> bool:
+        return False
+
     def _enforce(self) -> None:
         pass
