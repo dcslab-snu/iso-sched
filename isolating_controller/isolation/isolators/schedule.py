@@ -28,11 +28,11 @@ class SchedIsolator(Isolator):
 
     def __del__(self) -> None:
         if self._foreground_wl.is_running:
-            ended = self._foreground_wl.name+'-'+self._fg_pid
-            running = self._background_wl.name+'-'+self._bg_pid
+            ended = self._foreground_wl.name+'_'+self._fg_pid
+            running = self._background_wl.name+'_'+self._bg_pid
         else:
-            ended = self._background_wl.name+'-'+self._bg_pid
-            running = self._foreground_wl.name+'-'+self._fg_pid
+            ended = self._background_wl.name+'_'+self._bg_pid
+            running = self._foreground_wl.name+'_'+self._fg_pid
 
         CgroupCpuset.remove_group(str(ended))
 

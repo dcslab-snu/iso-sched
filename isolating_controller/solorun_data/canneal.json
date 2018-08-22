@@ -1,0 +1,16 @@
+{
+	"name": "canneal",
+	"power": 3176.07,
+	"l2miss": 11695726.52,
+	"l3miss_load": 2692141.06,
+	"l3miss": 8097583.23,
+	"instructions": 455948676.89,
+	"cycles": 1634222777.09,
+	"stall_cycles": 1315434078.76,
+	"wall_cycles": 6131497904,
+	"intra_coh": 48145.16,
+	"inter_coh": 0.12,
+	"llc_size": 39601881.27,
+	"local_mem": 618942539.57,
+	"remote_mem": 1117013.96
+}
