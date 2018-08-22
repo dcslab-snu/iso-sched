@@ -1,16 +1,1 @@
-{
-	"name": "kmeans",
-	"power": 2255.58,
-	"l2miss": 37142499.4,
-	"l3miss_load": 146483.33,
-	"l3miss": 4077132.47,
-	"instructions": 2909887584.77,
-	"cycles": 1955192800.99,
-	"stall_cycles": 734271037.18,
-	"wall_cycles": 6186278816,
-	"intra_coh": 25435251.64,
-	"inter_coh": 0.04,
-	"llc_size": 38270827.26,
-	"local_mem": 278800395.44,
-	"remote_mem": 1235664.8
-}
+../../solorun_data/8core/kmeans.json
