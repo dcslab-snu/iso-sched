@@ -1,16 +1,16 @@
 {
 	"name": "canneal",
-	"power": 2614.85,
-	"l2miss": 14666689.09,
+	"runtime": 40.73185682296753,
+	"l2miss": 15650043.015228426,
 	"l3miss_load": 3331773.96,
-	"l3miss": 10145562.8,
-	"instructions": 561626057.87,
-	"cycles": 2071453682,
-	"stall_cycles": 1678920687,
-	"wall_cycles": 6092462272,
-	"intra_coh": 123365.85,
-	"inter_coh": 0.05,
-	"llc_size": 38133015.27,
-	"local_mem": 798686338.3,
-	"remote_mem": 1759343.71
+	"l3miss": 10507174.040609136,
+	"instructions": 655535569.4467005,
+	"cycles": 2672474380.208122,
+	"stall_cycles": 2218273334.6497464,
+	"wall_cycles": 420279290.55837566,
+	"intra_coh": 137839.23350253806,
+	"inter_coh": 0.0,
+	"llc_size": 41158604.02030457,
+	"local_mem": 783304236.1827412,
+	"remote_mem": 530608.730964467
 }

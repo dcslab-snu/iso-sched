@@ -1,16 +1,16 @@
 {
 	"name": "streamcluster",
-	"power": 4412.66,
-	"l2miss": 70063114.31,
+	"runtime": 53.541455030441284,
+	"l2miss": 76413095.59003831,
 	"l3miss_load": 6332447.36,
-	"l3miss": 53250224.55,
-	"instructions": 3962158333,
-	"cycles": 6210463213,
-	"stall_cycles": 4093196987,
-	"wall_cycles": 6199869936,
-	"intra_coh": 11631860.57,
-	"inter_coh": 0.02,
-	"llc_size": 41855819.29,
-	"local_mem": 3449075351,
-	"remote_mem": 7289916.24
+	"l3miss": 58562485.26436782,
+	"instructions": 4342960709.034483,
+	"cycles": 7905224817.731801,
+	"stall_cycles": 5565952808.279694,
+	"wall_cycles": 420360095.7126437,
+	"intra_coh": 12223827.237547893,
+	"inter_coh": 0.5977011494252874,
+	"llc_size": 41900353.7164751,
+	"local_mem": 3738536022.314176,
+	"remote_mem": 3427457.471264368
 }
