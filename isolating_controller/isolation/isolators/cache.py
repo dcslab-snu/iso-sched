@@ -28,6 +28,15 @@ class CacheIsolator(Isolator):
         for tid in background_wl.all_child_tid():
             CAT.add_task(self._bg_grp_name, tid)
 
+    def __del__(self) -> None:
+        if self._foreground_wl.is_running:
+            # FIXME: hard coded
+            CAT.assign(self._fg_grp_name, '1', CAT.gen_mask(0, CAT.MAX))
+
+        if self._background_wl.is_running:
+            # FIXME: hard coded
+            CAT.assign(self._bg_grp_name, '1', CAT.gen_mask(0, CAT.MAX))
+
     def strengthen(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
 
