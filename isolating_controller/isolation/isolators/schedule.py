@@ -1,7 +1,6 @@
 # coding: UTF-8
 
 import logging
-import subprocess
 
 from .base_isolator import Isolator
 from .. import NextStep
@@ -15,9 +14,9 @@ class SchedIsolator(Isolator):
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
-        self._prev_bg_affinity = background_wl.cpuset
         # FIXME: hard coded
         self._cur_step = 24
+        self._prev_bg_affinity = set(range(self._cur_step, 32))
 
         self._bg_grp_name = f'{background_wl.name}_{background_wl.pid}'
 
