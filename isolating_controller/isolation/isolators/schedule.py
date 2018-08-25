@@ -40,6 +40,16 @@ class SchedIsolator(Isolator):
         self._cur_step -= 1
         return self
 
+    @property
+    def is_max_level(self) -> bool:
+        # FIXME: hard coded
+        return self._cur_step == 31
+
+    @property
+    def is_min_level(self) -> bool:
+        # FIXME: hard coded
+        return self._cur_step == 24
+
     def _enforce(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
         # FIXME: hard coded
@@ -48,7 +58,7 @@ class SchedIsolator(Isolator):
         # FIXME: hard coded
         CgroupCpuset.assign(self._bg_grp_name, set(range(self._cur_step, 32)))
 
-    def monitoring_result(self) -> NextStep:
+    def _monitoring_result(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
 
         curr_diff = metric_diff.local_mem_util

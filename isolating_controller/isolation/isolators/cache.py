@@ -49,6 +49,14 @@ class CacheIsolator(Isolator):
 
         return self
 
+    @property
+    def is_max_level(self) -> bool:
+        return self._cur_step == CAT.MIN
+
+    @property
+    def is_min_level(self) -> bool:
+        return self._cur_step == CAT.MAX
+
     def _enforce(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
 
@@ -72,7 +80,7 @@ class CacheIsolator(Isolator):
             CAT.assign(self._bg_grp_name, '1', bg_mask)
 
     # TODO: consider turn off cache partitioning
-    def monitoring_result(self) -> NextStep:
+    def _monitoring_result(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
 
         curr_diff = metric_diff.l3_hit_ratio

@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 # coding: UTF-8
 
-import sys
-import time
-
 import argparse
 import functools
 import json
 import logging
+import sys
+import time
+from threading import Thread
+from typing import Dict
+
 import pika
 import psutil
 from pika import BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import Basic
-from threading import Thread
-from typing import Dict
 
 from isolating_controller.isolation import NextStep
 from isolating_controller.isolation.policies import DiffPolicy, IsolationPolicy
@@ -150,22 +150,22 @@ class ControlThread(Thread):
 
                 if group.new_isolator_needed:
                     group.choose_next_isolator()
-                    group.cur_isolator.enforce()
-                    continue
 
                 cur_isolator = group.cur_isolator
 
-                monitoring = cur_isolator.monitoring_result()
-                logger.info(f'Monitoring Result : {monitoring.name}')
+                decided_next_step = cur_isolator.monitoring_result()
+                logger.info(f'Monitoring Result : {decided_next_step.name}')
 
-                if monitoring is NextStep.STRENGTHEN:
+                if decided_next_step is NextStep.STRENGTHEN:
                     cur_isolator.strengthen()
-                elif monitoring is NextStep.WEAKEN:
+                elif decided_next_step is NextStep.WEAKEN:
                     cur_isolator.weaken()
-                elif monitoring is NextStep.STOP:
+                elif decided_next_step is NextStep.STOP:
                     group.set_idle_isolator()
+                elif decided_next_step is NextStep.IDLE:
+                    continue
                 else:
-                    raise NotImplementedError(f'unknown isolation result : {monitoring}')
+                    raise NotImplementedError(f'unknown isolation result : {decided_next_step}')
 
                 cur_isolator.enforce()
 
@@ -187,6 +187,7 @@ class ControlThread(Thread):
             logger.info(f'{pending_group} is created')
 
             self._isolation_groups[pending_group] = 0
+            pending_group.init_isolators()
 
     def _remove_ended_groups(self) -> None:
         """

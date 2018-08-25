@@ -11,14 +11,22 @@ class IdleIsolator(Isolator):
     def enforce(self) -> None:
         pass
 
-    def monitoring_result(self) -> NextStep:
-        pass
+    def _monitoring_result(self) -> NextStep:
+        return NextStep.IDLE
 
     def strengthen(self) -> 'IdleIsolator':
         return self
 
     def weaken(self) -> 'IdleIsolator':
         return self
+
+    @property
+    def is_max_level(self) -> bool:
+        return True
+
+    @property
+    def is_min_level(self) -> bool:
+        return False
 
     def _enforce(self) -> None:
         pass
