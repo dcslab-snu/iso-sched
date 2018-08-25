@@ -17,6 +17,7 @@ from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import Basic
 
 from isolating_controller.isolation import NextStep
+from isolating_controller.isolation.isolators import Isolator
 from isolating_controller.isolation.policies import DiffPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
@@ -131,27 +132,25 @@ class MainController(metaclass=Singleton):
 
 class ControlThread(Thread):
     def __init__(self, pending_queue: PendingQueue) -> None:
-        Thread.__init__(self)
-        self.daemon = True
+        super().__init__(daemon=True)
 
         self._pending_queue: PendingQueue = pending_queue
 
-        self._interval: int = 2  #: Scheduling interval (2 sec.)
-
+        self._interval: int = 2  # Scheduling interval
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
 
     def _isolate_workloads(self) -> None:
         logger = logging.getLogger(self.__class__.__name__)
 
         for group, iteration_num in self._isolation_groups.items():
-            try:
-                logger.info('')
-                logger.info(f'***************isolation of {group.name} #{iteration_num}***************')
+            logger.info('')
+            logger.info(f'***************isolation of {group.name} #{iteration_num}***************')
 
+            try:
                 if group.new_isolator_needed:
                     group.choose_next_isolator()
 
-                cur_isolator = group.cur_isolator
+                cur_isolator: Isolator = group.cur_isolator
 
                 decided_next_step = cur_isolator.monitoring_result()
                 logger.info(f'Monitoring Result : {decided_next_step.name}')

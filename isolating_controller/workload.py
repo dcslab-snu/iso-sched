@@ -2,10 +2,10 @@
 
 from collections import deque
 from itertools import chain
+from typing import Deque, Tuple
 
 import cpuinfo
 import psutil
-from typing import Deque, Tuple
 
 from .metric_container.basic_metric import BasicMetric, MetricDiff
 from .solorun_data.datas import data_map
@@ -28,11 +28,8 @@ class Workload:
 
         self._proc_info = psutil.Process(pid)
 
-    def __str__(self) -> str:
-        return 'Workload (pid: {}, perf_pid: {})'.format(self._pid, self._perf_pid)
-
     def __repr__(self) -> str:
-        return self.__str__()
+        return 'Workload (pid: {}, perf_pid: {})'.format(self._pid, self._perf_pid)
 
     @property
     def name(self) -> str:
