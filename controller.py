@@ -103,7 +103,7 @@ class MainController(metaclass=Singleton):
 
         logger.debug(f'{metric} is given from ')
 
-        metric_que = workload.corun_metrics
+        metric_que = workload.metrics
 
         if len(metric_que) == self._metric_buf_size:
             metric_que.pop()

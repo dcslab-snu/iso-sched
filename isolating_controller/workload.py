@@ -23,7 +23,7 @@ class Workload:
     def __init__(self, name: str, pid: int, perf_pid: int, perf_interval: int) -> None:
         self._name = name
         self._pid = pid
-        self._corun_metrics: Deque[BasicMetric] = deque()
+        self._metrics: Deque[BasicMetric] = deque()
         self._perf_pid = perf_pid
 
         self._proc_info = psutil.Process(pid)
@@ -40,8 +40,8 @@ class Workload:
         return self._pid
 
     @property
-    def corun_metrics(self) -> Deque[BasicMetric]:
-        return self._corun_metrics
+    def metrics(self) -> Deque[BasicMetric]:
+        return self._metrics
 
     @property
     def cpuset(self) -> Tuple[int, ...]:
@@ -57,7 +57,7 @@ class Workload:
 
     def calc_metric_diff(self) -> MetricDiff:
         solorun_data = data_map[self.name]
-        curr_metric: BasicMetric = self._corun_metrics[0]
+        curr_metric: BasicMetric = self._metrics[0]
 
         return MetricDiff(curr_metric, solorun_data)
 
