@@ -1,15 +1,15 @@
 {
 	"name": "kmeans",
-	"runtime": 33.365391969680786,
-	"l2miss": 45206601.74375,
-	"l3miss": 4586765.84375,
-	"instructions": 3337088292.96875,
-	"cycles": 2548036999.93125,
-	"stall_cycles": 1132003402.1375,
-	"wall_cycles": 419812613.3625,
-	"intra_coh": 31605925.00625,
-	"inter_coh": 0.95,
-	"llc_size": 39092633.6,
-	"local_mem": 315797913.6,
-	"remote_mem": 393625.6
+	"runtime": 33.36375975608826,
+	"l2miss": 45596265.0375,
+	"l3miss": 4598464.3,
+	"instructions": 3342298546.6375,
+	"cycles": 2569921624.19375,
+	"stall_cycles": 1138714860.1375,
+	"wall_cycles": 419861516.01875,
+	"intra_coh": 31715877.3125,
+	"inter_coh": 0.48125,
+	"llc_size": 40324710.4,
+	"local_mem": 316615884.8,
+	"remote_mem": 518553.6
 }
