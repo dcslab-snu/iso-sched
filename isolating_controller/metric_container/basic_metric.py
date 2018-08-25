@@ -4,10 +4,9 @@ from time import localtime, strftime
 
 
 class BasicMetric:
-    def __init__(self, l2miss, l3miss_load, l3miss, inst, cycles, stall_cycles, wall_cycles,
-                 intra_coh, inter_coh, llc_size, local_mem, remote_mem, req_num=None):
+    def __init__(self, l2miss, l3miss, inst, cycles, stall_cycles, wall_cycles, intra_coh, inter_coh, llc_size,
+                 local_mem, remote_mem):
         self._l2miss = l2miss
-        self._l3miss_load = l3miss_load
         self._l3miss = l3miss
         self._instructions = inst
         self._wall_cycles = wall_cycles
@@ -18,16 +17,11 @@ class BasicMetric:
         self._llc_size = llc_size
         self._local_mem = local_mem
         self._remote_mem = remote_mem
-        self._req_number = req_num
         self._req_date = strftime("%I:%M:%S", localtime())
 
     @property
     def l2miss(self):
         return self._l2miss
-
-    @property
-    def l3miss_load(self):
-        return self._l3miss_load
 
     @property
     def l3miss(self):
@@ -66,10 +60,6 @@ class BasicMetric:
         return self._remote_mem
 
     @property
-    def req_num(self):
-        return self._req_number
-
-    @property
     def req_date(self):
         return self._req_date
 
@@ -104,8 +94,8 @@ class BasicMetric:
 
     def __str__(self):
         return ', '.join(map(str, (
-            self._l2miss, self._l3miss_load, self._l3miss, self._instructions, self._cycles, self._stall_cycles,
-            self._intra_coh, self._inter_coh, self._llc_size, self._req_number, self._req_date)))
+            self._l2miss, self._l3miss, self._instructions, self._cycles, self._stall_cycles,
+            self._intra_coh, self._inter_coh, self._llc_size, self._req_date)))
 
     def __repr__(self):
         return self.__str__()
