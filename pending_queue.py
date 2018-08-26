@@ -16,7 +16,9 @@ class PendingQueue(Sized):
         self._pending_list: List[IsolationPolicy] = list()
 
     def __len__(self) -> int:
-        return len(self._pending_list)
+        return len(tuple(
+                filter(lambda x: len(x.foreground_workload.metrics) > 0 and len(x.background_workload.metrics) > 0,
+                       self._pending_list)))
 
     def add_bg(self, workload: Workload) -> None:
         logger = logging.getLogger(self.__class__.__name__)
@@ -49,4 +51,6 @@ class PendingQueue(Sized):
             self._fg_q[workload.cpuset] = workload
 
     def pop(self) -> IsolationPolicy:
+        if len(self) is 0:
+            raise IndexError(f'{self} is empty')
         return self._pending_list.pop()
