@@ -222,14 +222,6 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    controller = MainController(args.buf_size)
-    controller.run()
-
-
-if __name__ == '__main__':
-    if sys.version_info < MIN_PYTHON:
-        sys.exit('Python {}.{} or later is required.\n'.format(*MIN_PYTHON))
-
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s'))
 
@@ -244,5 +236,13 @@ if __name__ == '__main__':
     monitoring_logger = logging.getLogger('monitoring')
     monitoring_logger.setLevel(logging.INFO)
     module_logger.addHandler(stream_handler)
+
+    controller = MainController(args.buf_size)
+    controller.run()
+
+
+if __name__ == '__main__':
+    if sys.version_info < MIN_PYTHON:
+        sys.exit('Python {}.{} or later is required.\n'.format(*MIN_PYTHON))
 
     main()
