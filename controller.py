@@ -88,7 +88,6 @@ class MainController(metaclass=Singleton):
         logger = logging.getLogger(self.__class__.__name__)
 
         item = BasicMetric(metric['l2miss'],
-                           metric['l3miss_load'],
                            metric['l3miss'],
                            metric['instructions'],
                            metric['cycles'],
@@ -98,8 +97,7 @@ class MainController(metaclass=Singleton):
                            metric['inter_coh'],
                            metric['llc_size'],
                            metric['local_mem'],
-                           metric['remote_mem'],
-                           metric['req_num'])
+                           metric['remote_mem'])
 
         logger.debug(f'{metric} is given from ')
 

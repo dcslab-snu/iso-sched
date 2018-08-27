@@ -15,7 +15,6 @@ def _init() -> None:
             metric = json.loads(data.read_text())
 
             item = BasicMetric(metric['l2miss'],
-                               metric['l3miss_load'],
                                metric['l3miss'],
                                metric['instructions'],
                                metric['cycles'],
