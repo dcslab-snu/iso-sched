@@ -157,6 +157,7 @@ class ControlThread(Thread):
                     cur_isolator.weaken()
                 elif decided_next_step is NextStep.STOP:
                     group.set_idle_isolator()
+                    continue
                 elif decided_next_step is NextStep.IDLE:
                     continue
                 else:

@@ -11,6 +11,12 @@ class IdleIsolator(Isolator):
     def enforce(self) -> None:
         pass
 
+    def yield_isolation(self) -> None:
+        pass
+
+    def monitoring_result(self) -> NextStep:
+        return self._monitoring_result()
+
     def _monitoring_result(self) -> NextStep:
         return NextStep.IDLE
 
