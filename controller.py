@@ -16,6 +16,7 @@ from pika import BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import Basic
 
+import isolating_controller
 from isolating_controller.isolation import NextStep
 from isolating_controller.isolation.isolators import Isolator
 from isolating_controller.isolation.policies import DiffPolicy, IsolationPolicy
@@ -24,8 +25,6 @@ from isolating_controller.workload import Workload
 from pending_queue import PendingQueue
 
 MIN_PYTHON = (3, 6)
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s]: %(message)s')
 
 
 class Singleton(type):
@@ -48,7 +47,7 @@ class MainController(metaclass=Singleton):
         self._control_thread = ControlThread(self._pending_wl)
 
     def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         ch.basic_ack(method.delivery_tag)
 
@@ -85,7 +84,7 @@ class MainController(metaclass=Singleton):
         metric = json.loads(body.decode())
         ch.basic_ack(method.delivery_tag)
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         item = BasicMetric(metric['l2miss'],
                            metric['l3miss'],
@@ -109,7 +108,7 @@ class MainController(metaclass=Singleton):
         metric_que.appendleft(item)
 
     def run(self) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         self._control_thread.start()
 
@@ -138,7 +137,7 @@ class ControlThread(Thread):
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
 
     def _isolate_workloads(self) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         for group, iteration_num in self._isolation_groups.items():
             logger.info('')
@@ -176,7 +175,7 @@ class ControlThread(Thread):
         """
         This function detects and registers the spawned workloads(threads).
         """
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         # set pending workloads as active
         while len(self._pending_queue):
@@ -190,7 +189,7 @@ class ControlThread(Thread):
         """
         deletes the finished workloads(threads) from the dict.
         """
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         ended = tuple(filter(lambda g: g.ended, self._isolation_groups))
 
@@ -205,7 +204,7 @@ class ControlThread(Thread):
             del self._isolation_groups[group]
 
     def run(self) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         logger.info('starting isolation loop')
 
@@ -232,5 +231,16 @@ def main() -> None:
 if __name__ == '__main__':
     if sys.version_info < MIN_PYTHON:
         sys.exit('Python {}.{} or later is required.\n'.format(*MIN_PYTHON))
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s'))
+
+    controller_logger = logging.getLogger(__name__)
+    controller_logger.setLevel(logging.INFO)
+    controller_logger.addHandler(stream_handler)
+
+    module_logger = logging.getLogger(isolating_controller.__name__)
+    module_logger.setLevel(logging.INFO)
+    module_logger.addHandler(stream_handler)
 
     main()

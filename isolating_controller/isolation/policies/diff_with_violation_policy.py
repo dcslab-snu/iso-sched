@@ -35,7 +35,7 @@ class DiffWViolationPolicy(DiffPolicy):
         if isinstance(self._cur_isolator, IdleIsolator):
             return True
 
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         if self._check_violation():
             logger.info(f'violation is occurred. current isolator type : {self._cur_isolator.__class__.__name__}')
@@ -55,7 +55,7 @@ class DiffWViolationPolicy(DiffPolicy):
         return False
 
     def choose_next_isolator(self) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         metric_diff = self._fg_wl.calc_metric_diff()
         # TODO: change level to debug

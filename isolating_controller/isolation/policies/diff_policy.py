@@ -25,7 +25,7 @@ class DiffPolicy(IsolationPolicy):
         self._is_sched_isolated = False
 
     def choose_next_isolator(self) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         metric_diff = self._fg_wl.calc_metric_diff()
         # TODO: change level to debug

@@ -67,7 +67,7 @@ class CacheIsolator(Isolator):
         return self._cur_step == CAT.MAX
 
     def _enforce(self) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
 
         if self._cur_step is None:
             logger.info(f'turn off CAT')
@@ -97,7 +97,7 @@ class CacheIsolator(Isolator):
         diff_of_diff = curr_diff - prev_diff
 
         # TODO: remove
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
         logger.info(f'diff of diff is {diff_of_diff}')
         logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
 
