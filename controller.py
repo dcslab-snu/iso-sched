@@ -47,11 +47,11 @@ class MainController(metaclass=Singleton):
         self._control_thread = ControlThread(self._pending_wl)
 
     def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
-        logger = logging.getLogger(__name__)
-
         ch.basic_ack(method.delivery_tag)
 
         arr = body.decode().strip().split(',')
+
+        logger = logging.getLogger('monitoring.workload_creation')
         logger.debug(f'{arr} is received from workload_creation queue')
 
         if len(arr) != 4:
@@ -73,7 +73,7 @@ class MainController(metaclass=Singleton):
         else:
             self._pending_wl.add_fg(workload)
 
-        logger.info(f'{wl_name} (pid: {pid}) is created')
+        logger.info(f'{workload} is created')
 
         wl_queue_name = '{}({})'.format(wl_name, pid)
         ch.queue_declare(wl_queue_name)
@@ -83,8 +83,6 @@ class MainController(metaclass=Singleton):
                         ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
         metric = json.loads(body.decode())
         ch.basic_ack(method.delivery_tag)
-
-        logger = logging.getLogger(__name__)
 
         item = BasicMetric(metric['l2miss'],
                            metric['l3miss'],
@@ -98,6 +96,7 @@ class MainController(metaclass=Singleton):
                            metric['local_mem'],
                            metric['remote_mem'])
 
+        logger = logging.getLogger(f'monitoring.metric.{workload}')
         logger.debug(f'{metric} is given from ')
 
         metric_que = workload.metrics
@@ -119,7 +118,7 @@ class MainController(metaclass=Singleton):
         channel.basic_consume(self._cbk_wl_creation, self._rmq_creation_queue)
 
         try:
-            logger.info('starting consuming thread')
+            logger.debug('starting consuming thread')
             channel.start_consuming()
 
         except KeyboardInterrupt:
@@ -149,7 +148,7 @@ class ControlThread(Thread):
 
                 cur_isolator: Isolator = group.cur_isolator
 
-                decided_next_step = cur_isolator.monitoring_result()
+                decided_next_step: NextStep = cur_isolator.monitoring_result()
                 logger.info(f'Monitoring Result : {decided_next_step.name}')
 
                 if decided_next_step is NextStep.STRENGTHEN:
@@ -198,14 +197,13 @@ class ControlThread(Thread):
                 ended_workload = group.background_workload
             else:
                 ended_workload = group.foreground_workload
-            logger.info(f'workload {ended_workload.name} (pid: {ended_workload.pid}) is ended')
+            logger.info(f'{group} of {ended_workload.name} is ended')
 
             # remove from containers
             del self._isolation_groups[group]
 
     def run(self) -> None:
         logger = logging.getLogger(__name__)
-
         logger.info('starting isolation loop')
 
         while True:
@@ -240,7 +238,11 @@ if __name__ == '__main__':
     controller_logger.addHandler(stream_handler)
 
     module_logger = logging.getLogger(isolating_controller.__name__)
-    module_logger.setLevel(logging.INFO)
+    module_logger.setLevel(logging.DEBUG)
+    module_logger.addHandler(stream_handler)
+
+    monitoring_logger = logging.getLogger('monitoring')
+    monitoring_logger.setLevel(logging.INFO)
     module_logger.addHandler(stream_handler)
 
     main()

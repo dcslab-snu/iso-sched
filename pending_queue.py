@@ -22,7 +22,7 @@ class PendingQueue(Sized):
 
     def add_bg(self, workload: Workload) -> None:
         logger = logging.getLogger(__name__)
-        logger.info(f'{workload.name} (pid: {workload.pid}) is ready for active as Background')
+        logger.info(f'{workload} is ready for active as Background')
 
         # FIXME: hard coded
         other_cpuset = tuple(map(lambda x: x - 8, workload.cpuset))
@@ -37,7 +37,7 @@ class PendingQueue(Sized):
 
     def add_fg(self, workload: Workload) -> None:
         logger = logging.getLogger(__name__)
-        logger.info(f'{workload.name} (pid: {workload.pid}) is ready for active as Foreground')
+        logger.info(f'{workload} is ready for active as Foreground')
 
         # FIXME: hard coded
         other_cpuset = tuple(map(lambda x: x + 8, workload.cpuset))

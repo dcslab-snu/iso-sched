@@ -29,11 +29,15 @@ class CacheIsolator(Isolator):
             CAT.add_task(self._bg_grp_name, tid)
 
     def __del__(self) -> None:
+        logger = logging.getLogger(__name__)
+
         if self._foreground_wl.is_running:
+            logger.debug(f'reset resctrl configuration of {self._foreground_wl}')
             # FIXME: hard coded
             CAT.assign(self._fg_grp_name, '1', CAT.gen_mask(0, CAT.MAX))
 
         if self._background_wl.is_running:
+            logger.debug(f'reset resctrl configuration of {self._background_wl}')
             # FIXME: hard coded
             CAT.assign(self._bg_grp_name, '1', CAT.gen_mask(0, CAT.MAX))
 
@@ -96,10 +100,9 @@ class CacheIsolator(Isolator):
         prev_diff = self._prev_metric_diff.l3_hit_ratio
         diff_of_diff = curr_diff - prev_diff
 
-        # TODO: remove
         logger = logging.getLogger(__name__)
-        logger.info(f'diff of diff is {diff_of_diff}')
-        logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
+        logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
+        logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
         self._prev_metric_diff = metric_diff
 
