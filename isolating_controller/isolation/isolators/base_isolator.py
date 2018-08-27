@@ -1,5 +1,6 @@
 # coding: UTF-8
 
+import logging
 from abc import ABCMeta, abstractmethod
 
 from .. import NextStep
@@ -53,9 +54,13 @@ class Isolator(metaclass=ABCMeta):
     def monitoring_result(self) -> NextStep:
         if self._force_strengthen:
             self._force_strengthen = False
+            logger = logging.getLogger(__name__)
+
             if self.is_max_level:
+                logger.debug('Not yet enforced, but there\'s no more configuration to search')
                 return NextStep.STOP
             else:
+                logger.debug('Not yet enforced, force strengthen isolation')
                 return NextStep.STRENGTHEN
 
         else:

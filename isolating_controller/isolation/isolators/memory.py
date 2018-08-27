@@ -41,7 +41,7 @@ class MemoryIsolator(Isolator):
         return self._cur_step == DVFS.MAX
 
     def _enforce(self) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
         logger.info(f'frequency of cpuset {self._background_wl.cpuset} is {self._cur_step / 1_000_000}GHz')
 
         DVFS.set_freq(self._cur_step, self._background_wl.cpuset)
@@ -53,10 +53,9 @@ class MemoryIsolator(Isolator):
         prev_diff = self._prev_metric_diff.local_mem_util
         diff_of_diff = curr_diff - prev_diff
 
-        # TODO: remove
-        logger = logging.getLogger(self.__class__.__name__)
-        logger.info(f'diff of diff is {diff_of_diff}')
-        logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
+        logger = logging.getLogger(__name__)
+        logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
+        logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
         self._prev_metric_diff = metric_diff
 

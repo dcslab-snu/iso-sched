@@ -20,6 +20,9 @@ class IsolationPolicy(metaclass=ABCMeta):
     def __hash__(self) -> int:
         return self._fg_wl.pid
 
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__} <fg: {self._fg_wl}, bg: {self._bg_wl}>'
+
     def init_isolators(self) -> None:
         self._isolator_map = dict((
             (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),

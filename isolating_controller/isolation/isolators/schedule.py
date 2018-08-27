@@ -50,7 +50,7 @@ class SchedIsolator(Isolator):
         return self._cur_step == 24
 
     def _enforce(self) -> None:
-        logger = logging.getLogger(self.__class__.__name__)
+        logger = logging.getLogger(__name__)
         # FIXME: hard coded
         logger.info(f'affinity of background is {self._cur_step}-31')
 
@@ -64,10 +64,9 @@ class SchedIsolator(Isolator):
         prev_diff = self._prev_metric_diff.local_mem_util
         diff_of_diff = curr_diff - prev_diff
 
-        # TODO: remove
-        logger = logging.getLogger(self.__class__.__name__)
-        logger.info(f'diff of diff is {diff_of_diff}')
-        logger.info(f'current diff: {curr_diff}, previous diff: {prev_diff}')
+        logger = logging.getLogger(__name__)
+        logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
+        logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
         self._prev_metric_diff = metric_diff
 

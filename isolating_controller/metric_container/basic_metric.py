@@ -124,4 +124,4 @@ class MetricDiff:
         return self._remote_mem
 
     def __repr__(self) -> str:
-        return f'L3 hit ratio: {self._l3_hit_ratio}, Local Memory access: {self._local_mem}'
+        return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, Local Memory access diff: {self._local_mem:>6.03f}'

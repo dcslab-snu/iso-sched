@@ -29,7 +29,7 @@ class Workload:
         self._proc_info = psutil.Process(pid)
 
     def __repr__(self) -> str:
-        return 'Workload (pid: {}, perf_pid: {})'.format(self._pid, self._perf_pid)
+        return f'{self._name} (pid: {self._pid})'
 
     @property
     def name(self) -> str:
