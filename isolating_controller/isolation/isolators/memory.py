@@ -60,6 +60,7 @@ class MemoryIsolator(Isolator):
         self._prev_metric_diff = metric_diff
 
         if not (DVFS.MIN < self._cur_step < DVFS.MAX) \
+                or abs(diff_of_diff) <= MemoryIsolator._THRESHOLD \
                 or abs(curr_diff) <= MemoryIsolator._THRESHOLD:
             return NextStep.STOP
 
