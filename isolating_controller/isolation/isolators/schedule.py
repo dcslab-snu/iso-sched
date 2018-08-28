@@ -86,6 +86,7 @@ class SchedIsolator(Isolator):
 
         # FIXME: hard coded
         if not (24 < self._cur_step < 31) \
+                or abs(diff_of_diff) <= SchedIsolator._THRESHOLD \
                 or abs(curr_diff) <= SchedIsolator._THRESHOLD:
             return NextStep.STOP
 
