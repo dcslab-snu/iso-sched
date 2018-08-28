@@ -40,19 +40,16 @@ class DiffPolicy(IsolationPolicy):
             logger.debug('****All isolators are applicable for now!****')
 
         if not self._is_llc_isolated and l3_hit_ratio > local_mem_util:
-            self._cur_isolator.yield_isolation()
             self._cur_isolator = self._isolator_map[CacheIsolator]
             self._is_llc_isolated = True
             logger.info(f'Cache Isolation for {self._fg_wl} is started')
 
         elif not self._is_mem_isolated and l3_hit_ratio < local_mem_util:
-            self._cur_isolator.yield_isolation()
             self._cur_isolator = self._isolator_map[MemoryIsolator]
             self._is_mem_isolated = True
             logger.info(f'Memory Bandwidth Isolation for {self._fg_wl} is started')
 
         elif not self._is_sched_isolated and l3_hit_ratio < local_mem_util:
-            self._cur_isolator.yield_isolation()
             self._cur_isolator = self._isolator_map[SchedIsolator]
             self._is_sched_isolated = True
             logger.info(f'Cpuset Isolation for {self._fg_wl} is started')
