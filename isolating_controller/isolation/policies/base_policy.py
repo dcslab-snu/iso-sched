@@ -57,4 +57,5 @@ class IsolationPolicy(metaclass=ABCMeta):
         return f'{self._fg_wl.name}({self._fg_wl.pid})'
 
     def set_idle_isolator(self) -> None:
+        self._cur_isolator.yield_isolation()
         self._cur_isolator = IsolationPolicy._IDLE_ISOLATOR

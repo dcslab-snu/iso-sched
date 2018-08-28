@@ -70,18 +70,21 @@ class DiffWViolationPolicy(DiffPolicy):
             self._clear_flags()
 
         if not self._is_llc_isolated and l3_hit_ratio > local_mem_util:
+            self._cur_isolator.yield_isolation()
             self._cur_isolator = self._isolator_map[CacheIsolator]
             self._is_llc_isolated = True
             self._violation_count = None
             logger.info(f'Cache Isolation for workload {fg_name} (pid: {fg_pid}) is started')
 
         elif not self._is_mem_isolated and l3_hit_ratio < local_mem_util:
+            self._cur_isolator.yield_isolation()
             self._cur_isolator = self._isolator_map[MemoryIsolator]
             self._is_mem_isolated = True
             self._violation_count = None
             logger.info(f'Memory Bandwidth Isolation for workload {fg_name} (pid: {fg_pid}) is started')
 
         elif not self._is_sched_isolated and l3_hit_ratio < local_mem_util:
+            self._cur_isolator.yield_isolation()
             self._cur_isolator = self._isolator_map[SchedIsolator]
             self._is_sched_isolated = True
             self._violation_count = None
