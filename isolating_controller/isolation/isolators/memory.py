@@ -34,7 +34,7 @@ class MemoryIsolator(Isolator):
 
     @property
     def is_max_level(self) -> bool:
-        return self._cur_step == DVFS.MIN
+        return self._cur_step - DVFS.STEP < DVFS.MIN
 
     @property
     def is_min_level(self) -> bool:
