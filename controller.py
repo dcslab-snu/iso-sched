@@ -236,7 +236,7 @@ def main() -> None:
 
     monitoring_logger = logging.getLogger('monitoring')
     monitoring_logger.setLevel(logging.INFO)
-    module_logger.addHandler(stream_handler)
+    monitoring_logger.addHandler(stream_handler)
 
     controller = MainController(args.buf_size)
     controller.run()
