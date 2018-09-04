@@ -1,10 +1,17 @@
 # coding: UTF-8
-
+import logging
 from abc import ABCMeta, abstractmethod
+from enum import IntEnum
 from typing import Mapping, Type
 
+from isolating_controller.metric_container.basic_metric import MetricDiff
 from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
+
+
+class ResourceType(IntEnum):
+    CACHE = 0
+    MEMORY = 1
 
 
 class IsolationPolicy(metaclass=ABCMeta):
@@ -36,8 +43,32 @@ class IsolationPolicy(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def choose_next_isolator(self) -> None:
+    def choose_next_isolator(self) -> bool:
         pass
+
+    def contentious_resource(self) -> ResourceType:
+        metric_diff: MetricDiff = self._fg_wl.calc_metric_diff()
+
+        logger = logging.getLogger(__name__)
+        logger.info(repr(metric_diff))
+
+        if metric_diff.local_mem_util > 0 and metric_diff.l3_hit_ratio > 0:
+            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util:
+                return ResourceType.CACHE
+            else:
+                return ResourceType.MEMORY
+
+        elif metric_diff.local_mem_util < 0 < metric_diff.l3_hit_ratio:
+            return ResourceType.MEMORY
+
+        elif metric_diff.l3_hit_ratio < 0 < metric_diff.local_mem_util:
+            return ResourceType.CACHE
+
+        else:
+            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util:
+                return ResourceType.MEMORY
+            else:
+                return ResourceType.CACHE
 
     @property
     def foreground_workload(self) -> Workload:
