@@ -64,11 +64,11 @@ class CacheIsolator(Isolator):
 
     @property
     def is_max_level(self) -> bool:
-        return self._cur_step == CAT.MIN
+        return self._cur_step is not None and self._cur_step - CAT.STEP == CAT.MIN
 
     @property
     def is_min_level(self) -> bool:
-        return self._cur_step == CAT.MAX
+        return self._cur_step is not None and self._cur_step + CAT.STEP == CAT.MAX
 
     def _enforce(self) -> None:
         logger = logging.getLogger(__name__)
