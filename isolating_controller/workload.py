@@ -25,6 +25,7 @@ class Workload:
         self._pid = pid
         self._metrics: Deque[BasicMetric] = deque()
         self._perf_pid = perf_pid
+        self._perf_interval = perf_interval
 
         self._proc_info = psutil.Process(pid)
 
@@ -50,6 +51,10 @@ class Workload:
     @property
     def perf_pid(self) -> int:
         return self._perf_pid
+
+    @property
+    def perf_interval(self):
+        return self._perf_interval
 
     @property
     def is_running(self) -> bool:

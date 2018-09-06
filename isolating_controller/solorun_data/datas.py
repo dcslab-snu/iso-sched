@@ -24,7 +24,8 @@ def _init() -> None:
                                metric['inter_coh'],
                                metric['llc_size'],
                                metric['local_mem'],
-                               metric['remote_mem'])
+                               metric['remote_mem'],
+                               1000)
 
             data_map[metric['name']] = item
 

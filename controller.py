@@ -94,7 +94,8 @@ class MainController(metaclass=Singleton):
                            metric['inter_coh'],
                            metric['llc_size'],
                            metric['local_mem'],
-                           metric['remote_mem'])
+                           metric['remote_mem'],
+                           workload.perf_interval)
 
         logger = logging.getLogger(f'monitoring.metric.{workload}')
         logger.debug(f'{metric} is given from ')

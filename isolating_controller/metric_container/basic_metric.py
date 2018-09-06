@@ -5,7 +5,7 @@ from time import localtime, strftime
 
 class BasicMetric:
     def __init__(self, l2miss, l3miss, inst, cycles, stall_cycles, wall_cycles, intra_coh, inter_coh, llc_size,
-                 local_mem, remote_mem):
+                 local_mem, remote_mem, interval: int):
         self._l2miss = l2miss
         self._l3miss = l3miss
         self._instructions = inst
@@ -17,6 +17,7 @@ class BasicMetric:
         self._llc_size = llc_size
         self._local_mem = local_mem
         self._remote_mem = remote_mem
+        self._interval = interval
         self._req_date = strftime("%I:%M:%S", localtime())
 
     @property
@@ -55,9 +56,15 @@ class BasicMetric:
     def local_mem(self) -> float:
         return self._local_mem
 
+    def local_mem_ps(self) -> float:
+        return self._local_mem * (1000 / self._interval)
+
     @property
     def remote_mem(self):
         return self._remote_mem
+
+    def remote_mem_ps(self) -> float:
+        return self._remote_mem * (1000 / self._interval)
 
     @property
     def req_date(self):
@@ -104,20 +111,20 @@ class BasicMetric:
 class MetricDiff:
     def __init__(self, curr: BasicMetric, prev: BasicMetric) -> None:
         self._l3_hit_ratio = curr.l3hit_ratio - prev.l3hit_ratio
-        self._local_mem = curr.local_mem / prev.local_mem - 1
-        self._remote_mem = curr.remote_mem / prev.remote_mem - 1
+        self._local_mem_ps = curr.local_mem_ps() / prev.local_mem_ps() - 1
+        self._remote_mem_ps = curr.remote_mem_ps() / prev.remote_mem_ps() - 1
 
     @property
     def l3_hit_ratio(self):
         return self._l3_hit_ratio
 
     @property
-    def local_mem_util(self):
-        return self._local_mem
+    def local_mem_util_ps(self):
+        return self._local_mem_ps
 
     @property
-    def remote_mem(self):
-        return self._remote_mem
+    def remote_mem_ps(self):
+        return self._remote_mem_ps
 
     def __repr__(self) -> str:
-        return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, Local Memory access diff: {self._local_mem:>6.03f}'
+        return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, Local Memory access diff: {self._local_mem_ps:>6.03f}'

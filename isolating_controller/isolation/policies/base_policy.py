@@ -52,20 +52,20 @@ class IsolationPolicy(metaclass=ABCMeta):
         logger = logging.getLogger(__name__)
         logger.info(repr(metric_diff))
 
-        if metric_diff.local_mem_util > 0 and metric_diff.l3_hit_ratio > 0:
-            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util:
+        if metric_diff.local_mem_util_ps > 0 and metric_diff.l3_hit_ratio > 0:
+            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util_ps:
                 return ResourceType.CACHE
             else:
                 return ResourceType.MEMORY
 
-        elif metric_diff.local_mem_util < 0 < metric_diff.l3_hit_ratio:
+        elif metric_diff.local_mem_util_ps < 0 < metric_diff.l3_hit_ratio:
             return ResourceType.MEMORY
 
-        elif metric_diff.l3_hit_ratio < 0 < metric_diff.local_mem_util:
+        elif metric_diff.l3_hit_ratio < 0 < metric_diff.local_mem_util_ps:
             return ResourceType.CACHE
 
         else:
-            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util:
+            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util_ps:
                 return ResourceType.MEMORY
             else:
                 return ResourceType.CACHE

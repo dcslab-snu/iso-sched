@@ -60,8 +60,8 @@ class SchedIsolator(Isolator):
     def _monitoring_result(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
 
-        curr_diff = metric_diff.local_mem_util
-        prev_diff = self._prev_metric_diff.local_mem_util
+        curr_diff = metric_diff.local_mem_util_ps
+        prev_diff = self._prev_metric_diff.local_mem_util_ps
         diff_of_diff = curr_diff - prev_diff
 
         logger = logging.getLogger(__name__)
