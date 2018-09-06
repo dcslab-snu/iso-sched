@@ -5,6 +5,7 @@ import argparse
 import functools
 import json
 import logging
+import subprocess
 import sys
 import time
 from threading import Thread
@@ -166,7 +167,7 @@ class ControlThread(Thread):
 
                 cur_isolator.enforce()
 
-            except psutil.NoSuchProcess:
+            except psutil.NoSuchProcess or subprocess.CalledProcessError:
                 pass
 
             finally:

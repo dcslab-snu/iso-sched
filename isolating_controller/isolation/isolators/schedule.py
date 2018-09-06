@@ -28,8 +28,6 @@ class SchedIsolator(Isolator):
     def __del__(self) -> None:
         if self._background_wl.is_running:
             CgroupCpuset.assign(self._bg_grp_name, set(self._prev_bg_affinity))
-        else:
-            CgroupCpuset.remove_group(self._bg_grp_name)
 
     def strengthen(self) -> 'SchedIsolator':
         self._cur_step += 1
