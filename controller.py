@@ -167,7 +167,7 @@ class ControlThread(Thread):
 
                 cur_isolator.enforce()
 
-            except psutil.NoSuchProcess or subprocess.CalledProcessError:
+            except (psutil.NoSuchProcess, subprocess.CalledProcessError, ProcessLookupError):
                 pass
 
             finally:
