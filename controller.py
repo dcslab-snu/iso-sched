@@ -55,10 +55,10 @@ class MainController(metaclass=Singleton):
         logger = logging.getLogger('monitoring.workload_creation')
         logger.debug(f'{arr} is received from workload_creation queue')
 
-        if len(arr) != 4:
+        if len(arr) != 5:
             return
 
-        wl_name, pid, perf_pid, perf_interval = arr
+        wl_name, wl_type, pid, perf_pid, perf_interval = arr
         pid = int(pid)
         perf_pid = int(perf_pid)
         perf_interval = int(perf_interval)
@@ -66,10 +66,9 @@ class MainController(metaclass=Singleton):
         if not psutil.pid_exists(pid):
             return
 
-        workload = Workload(wl_name, pid, perf_pid, perf_interval)
+        workload = Workload(wl_name, wl_type, pid, perf_pid, perf_interval)
 
-        # FIXME: hard coded
-        if wl_name == 'SP':
+        if wl_type == 'bg':
             self._pending_wl.add_bg(workload)
         else:
             self._pending_wl.add_fg(workload)

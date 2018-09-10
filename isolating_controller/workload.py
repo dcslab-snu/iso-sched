@@ -20,8 +20,9 @@ class Workload:
     ControlThread schedules the groups of `Workload' instances to enforce their scheduling decisions
     """
 
-    def __init__(self, name: str, pid: int, perf_pid: int, perf_interval: int) -> None:
+    def __init__(self, name: str, wl_type: str, pid: int, perf_pid: int, perf_interval: int) -> None:
         self._name = name
+        self._wl_type = wl_type
         self._pid = pid
         self._metrics: Deque[BasicMetric] = deque()
         self._perf_pid = perf_pid
@@ -39,6 +40,10 @@ class Workload:
     @property
     def pid(self) -> int:
         return self._pid
+
+    @property
+    def wl_type(self) -> str:
+        return self._wl_type
 
     @property
     def metrics(self) -> Deque[BasicMetric]:
