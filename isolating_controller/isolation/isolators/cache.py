@@ -10,7 +10,8 @@ from ...workload import Workload
 
 
 class CacheIsolator(Isolator):
-    _THRESHOLD = 0.005
+    _DOD_THRESHOLD = 0.005
+    _FORCE_THRESHOLD = 0.1
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
@@ -68,13 +69,13 @@ class CacheIsolator(Isolator):
 
     @property
     def is_min_level(self) -> bool:
-        return self._cur_step is not None and self._cur_step - CAT.STEP <= CAT.MIN
+        return self._cur_step is None or self._cur_step - CAT.STEP <= CAT.MIN
 
     def _enforce(self) -> None:
         logger = logging.getLogger(__name__)
 
         if self._cur_step is None:
-            logger.info(f'turn off CAT')
+            logger.info('CAT off')
 
             # FIXME: hard coded
             mask = CAT.gen_mask(0, CAT.MAX)
@@ -92,6 +93,26 @@ class CacheIsolator(Isolator):
             bg_mask = CAT.gen_mask(self._cur_step)
             CAT.assign(self._bg_grp_name, '1', bg_mask)
 
+    def _try_scheduled(self) -> NextStep:
+        metric_diff = self._foreground_wl.calc_metric_diff()
+        curr_diff = metric_diff.l3_hit_ratio
+
+        logger = logging.getLogger(__name__)
+        logger.debug(f'current diff: {curr_diff:>7.4f}')
+
+        if curr_diff < 0:
+            if self.is_max_level:
+                return NextStep.STOP
+            else:
+                return NextStep.STRENGTHEN
+        elif curr_diff <= CacheIsolator._FORCE_THRESHOLD:
+            return NextStep.STOP
+        else:
+            if self.is_min_level:
+                return NextStep.STOP
+            else:
+                return NextStep.WEAKEN
+
     # TODO: consider turn off cache partitioning
     def _monitoring_result(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
@@ -108,8 +129,8 @@ class CacheIsolator(Isolator):
 
         if self._cur_step is not None \
                 and not (CAT.MIN < self._cur_step < CAT.MAX) \
-                or abs(diff_of_diff) <= CacheIsolator._THRESHOLD \
-                or abs(curr_diff) <= CacheIsolator._THRESHOLD:
+                or abs(diff_of_diff) <= CacheIsolator._DOD_THRESHOLD \
+                or abs(curr_diff) <= CacheIsolator._DOD_THRESHOLD:
             return NextStep.STOP
 
         elif curr_diff > 0:
