@@ -65,10 +65,12 @@ class CacheIsolator(Isolator):
 
     @property
     def is_max_level(self) -> bool:
+        # FIXME: hard coded
         return self._cur_step is not None and self._cur_step + CAT.STEP >= CAT.MAX
 
     @property
     def is_min_level(self) -> bool:
+        # FIXME: hard coded
         return self._cur_step is None or self._cur_step - CAT.STEP <= CAT.MIN
 
     def _enforce(self) -> None:
@@ -93,7 +95,7 @@ class CacheIsolator(Isolator):
             bg_mask = CAT.gen_mask(self._cur_step)
             CAT.assign(self._bg_grp_name, '1', bg_mask)
 
-    def _try_scheduled(self) -> NextStep:
+    def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
         curr_diff = metric_diff.l3_hit_ratio
 
@@ -125,8 +127,6 @@ class CacheIsolator(Isolator):
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
-        self._prev_metric_diff = metric_diff
-
         if self._cur_step is not None \
                 and not (CAT.MIN < self._cur_step < CAT.MAX) \
                 or abs(diff_of_diff) <= CacheIsolator._DOD_THRESHOLD \
@@ -134,15 +134,13 @@ class CacheIsolator(Isolator):
             return NextStep.STOP
 
         elif curr_diff > 0:
-            # FIXME: hard coded
-            if self._cur_step is None or self._cur_step - CAT.STEP <= CAT.MIN:
+            if self.is_min_level:
                 return NextStep.STOP
             else:
                 return NextStep.WEAKEN
 
         else:
-            # FIXME: hard coded
-            if self._cur_step is None or CAT.MAX <= self._cur_step + CAT.STEP:
+            if self.is_max_level:
                 return NextStep.STOP
             else:
                 return NextStep.STRENGTHEN

@@ -34,11 +34,13 @@ class MemoryIsolator(Isolator):
 
     @property
     def is_max_level(self) -> bool:
+        # FIXME: hard coded
         return self._cur_step - DVFS.STEP < DVFS.MIN
 
     @property
     def is_min_level(self) -> bool:
-        return self._cur_step == DVFS.MAX
+        # FIXME: hard coded
+        return DVFS.MAX <= self._cur_step + DVFS.STEP
 
     def _enforce(self) -> None:
         logger = logging.getLogger(__name__)
@@ -46,7 +48,7 @@ class MemoryIsolator(Isolator):
 
         DVFS.set_freq(self._cur_step, self._background_wl.cpuset)
 
-    def _try_scheduled(self) -> NextStep:
+    def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
         curr_diff = metric_diff.local_mem_util_ps
 
@@ -77,23 +79,19 @@ class MemoryIsolator(Isolator):
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
-        self._prev_metric_diff = metric_diff
-
         if not (DVFS.MIN < self._cur_step < DVFS.MAX) \
                 or abs(diff_of_diff) <= MemoryIsolator._DOD_THRESHOLD \
                 or abs(curr_diff) <= MemoryIsolator._DOD_THRESHOLD:
             return NextStep.STOP
 
         elif curr_diff > 0:
-            # FIXME: hard coded
-            if DVFS.MAX <= self._cur_step - DVFS.STEP:
+            if self.is_max_level:
                 return NextStep.STOP
             else:
                 return NextStep.WEAKEN
 
         else:
-            # FIXME: hard coded
-            if self._cur_step - DVFS.STEP <= DVFS.MIN:
+            if self.is_min_level:
                 return NextStep.STOP
             else:
                 return NextStep.STRENGTHEN

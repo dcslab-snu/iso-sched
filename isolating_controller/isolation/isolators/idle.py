@@ -25,10 +25,10 @@ class IdleIsolator(Isolator):
     def _enforce(self) -> None:
         pass
 
-    def _try_scheduled(self) -> NextStep:
+    def _first_decision(self) -> NextStep:
         return NextStep.IDLE
 
-    def monitoring_result(self) -> NextStep:
+    def decide_next_step(self) -> NextStep:
         return self._monitoring_result()
 
     def _monitoring_result(self) -> NextStep:

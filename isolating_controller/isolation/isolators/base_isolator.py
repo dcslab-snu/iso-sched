@@ -14,7 +14,7 @@ class Isolator(metaclass=ABCMeta):
         self._foreground_wl = foreground_wl
         self._background_wl = background_wl
 
-        self._force_strengthen: bool = True
+        self._is_fist_decision: bool = True
 
     @abstractmethod
     def strengthen(self) -> 'Isolator':
@@ -44,20 +44,20 @@ class Isolator(metaclass=ABCMeta):
         self._enforce()
 
     def yield_isolation(self) -> None:
-        self._force_strengthen = True
+        self._is_fist_decision = True
 
     @abstractmethod
-    def _try_scheduled(self) -> NextStep:
+    def _first_decision(self) -> NextStep:
         pass
 
     @abstractmethod
     def _monitoring_result(self) -> NextStep:
         pass
 
-    def monitoring_result(self) -> NextStep:
-        if self._force_strengthen:
-            self._force_strengthen = False
-            return self._try_scheduled()
+    def decide_next_step(self) -> NextStep:
+        if self._is_fist_decision:
+            self._is_fist_decision = False
+            return self._first_decision()
 
         else:
             return self._monitoring_result()

@@ -56,7 +56,7 @@ class SchedIsolator(Isolator):
         # FIXME: hard coded
         CgroupCpuset.assign(self._bg_grp_name, set(range(self._cur_step, 32)))
 
-    def _try_scheduled(self) -> NextStep:
+    def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
         curr_diff = metric_diff.local_mem_util_ps
 
@@ -86,8 +86,6 @@ class SchedIsolator(Isolator):
         logger = logging.getLogger(__name__)
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
-
-        self._prev_metric_diff = metric_diff
 
         # FIXME: hard coded
         if not (24 < self._cur_step < 31) \
