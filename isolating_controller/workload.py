@@ -2,13 +2,15 @@
 
 from collections import deque
 from itertools import chain
-from typing import Deque, Tuple
+from typing import Deque, Tuple, Dict, Set
 
 import cpuinfo
 import psutil
 
+from .utils.numa_topology import NumaTopology
 from .metric_container.basic_metric import BasicMetric, MetricDiff
 from .solorun_data.datas import data_map
+
 
 L3_SIZE = int(cpuinfo.get_cpu_info()['l3_cache_size'].split()[0]) * 1024
 
@@ -79,3 +81,12 @@ class Workload:
             ))
         except psutil.NoSuchProcess:
             return tuple()
+        
+    def get_socket_id(self):
+        cpuset = self.cpuset
+        cpu_topo, _ = await NumaTopology.get_numa_info()
+
+        # FIXME: Hardcode for assumption (one workload to one socket)
+        for socket_id, skt_cpus in cpu_topo.items():
+            if cpuset in skt_cpus:
+                return socket_id

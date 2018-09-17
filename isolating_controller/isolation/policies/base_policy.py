@@ -17,9 +17,10 @@ class ResourceType(IntEnum):
 class IsolationPolicy(metaclass=ABCMeta):
     _IDLE_ISOLATOR: IdleIsolator = IdleIsolator()
 
-    def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
+    def __init__(self, fg_wl: Workload, bg_wl: Workload, skt_id: int) -> None:
         self._fg_wl = fg_wl
         self._bg_wl = bg_wl
+        self._skt_id = skt_id
 
         self._isolator_map: Mapping[Type[Isolator], Isolator] = dict()
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
