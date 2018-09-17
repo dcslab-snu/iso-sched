@@ -18,6 +18,13 @@ class Isolator(metaclass=ABCMeta):
 
     @abstractmethod
     def strengthen(self) -> 'Isolator':
+        """
+        Adjust the isolation parameter to allocate more resources to the foreground workload.
+        (Does not actually isolate)
+
+        :return: current isolator object for method chaining
+        :rtype: Isolator
+        """
         pass
 
     @property
@@ -32,6 +39,13 @@ class Isolator(metaclass=ABCMeta):
 
     @abstractmethod
     def weaken(self) -> 'Isolator':
+        """
+        Adjust the isolation parameter to allocate less resources to the foreground workload.
+        (Does not actually isolate)
+
+        :return: current isolator object for method chaining
+        :rtype: Isolator
+        """
         pass
 
     @abstractmethod
@@ -39,11 +53,16 @@ class Isolator(metaclass=ABCMeta):
         pass
 
     def enforce(self) -> None:
+        """Actually applies the isolation parameter that set on the current object"""
         self._prev_metric_diff: MetricDiff = self._foreground_wl.calc_metric_diff()
 
         self._enforce()
 
     def yield_isolation(self) -> None:
+        """
+        Declare to stop the configuration search for the current isolator.
+        Must be called when the current isolator yields the initiative.
+        """
         self._is_fist_decision = True
 
     @abstractmethod
