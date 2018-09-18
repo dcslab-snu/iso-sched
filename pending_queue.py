@@ -56,8 +56,8 @@ class PendingQueue(Sized):
         for i in range(len(self._bg_q)):
             all_pids.append(bg_pids[i])
 
-        node_list = await NumaTopology.get_node_topo()
-        group_pids = dict() # Dict. for grouping the fg and bg
+        node_list = NumaTopology.get_node_topo()
+        group_pids = dict()  # Dict. for grouping the fg and bg
         for node in node_list:
             group_pids[node] = set()
 
