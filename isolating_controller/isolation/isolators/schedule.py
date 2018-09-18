@@ -9,16 +9,17 @@ from ...workload import Workload
 
 
 class SchedIsolator(Isolator):
-    _THRESHOLD = 0.005
+    _DOD_THRESHOLD = 0.005
+    _FORCE_THRESHOLD = 0.1
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
         # FIXME: hard coded
         self._cur_step = 24
-        self._prev_bg_affinity = set(range(self._cur_step, 32))
 
         self._bg_grp_name = f'{background_wl.name}_{background_wl.pid}'
+        self._prev_bg_affinity = background_wl.cpuset
 
         CgroupCpuset.create_group(self._bg_grp_name)
         CgroupCpuset.add_task(self._bg_grp_name, background_wl.pid)
@@ -55,6 +56,26 @@ class SchedIsolator(Isolator):
         # FIXME: hard coded
         CgroupCpuset.assign(self._bg_grp_name, set(range(self._cur_step, 32)))
 
+    def _first_decision(self) -> NextStep:
+        metric_diff = self._foreground_wl.calc_metric_diff()
+        curr_diff = metric_diff.local_mem_util_ps
+
+        logger = logging.getLogger(__name__)
+        logger.debug(f'current diff: {curr_diff:>7.4f}')
+
+        if curr_diff < 0:
+            if self.is_max_level:
+                return NextStep.STOP
+            else:
+                return NextStep.STRENGTHEN
+        elif curr_diff <= SchedIsolator._FORCE_THRESHOLD:
+            return NextStep.STOP
+        else:
+            if self.is_min_level:
+                return NextStep.STOP
+            else:
+                return NextStep.WEAKEN
+
     def _monitoring_result(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
 
@@ -66,12 +87,10 @@ class SchedIsolator(Isolator):
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
-        self._prev_metric_diff = metric_diff
-
         # FIXME: hard coded
         if not (24 < self._cur_step < 31) \
-                or abs(diff_of_diff) <= SchedIsolator._THRESHOLD \
-                or abs(curr_diff) <= SchedIsolator._THRESHOLD:
+                or abs(diff_of_diff) <= SchedIsolator._DOD_THRESHOLD \
+                or abs(curr_diff) <= SchedIsolator._DOD_THRESHOLD:
             return NextStep.STOP
 
         elif curr_diff > 0:

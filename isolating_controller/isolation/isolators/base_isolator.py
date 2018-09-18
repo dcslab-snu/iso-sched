@@ -1,6 +1,5 @@
 # coding: UTF-8
 
-import logging
 from abc import ABCMeta, abstractmethod
 
 from .. import NextStep
@@ -15,10 +14,17 @@ class Isolator(metaclass=ABCMeta):
         self._foreground_wl = foreground_wl
         self._background_wl = background_wl
 
-        self._force_strengthen: bool = True
+        self._is_fist_decision: bool = True
 
     @abstractmethod
     def strengthen(self) -> 'Isolator':
+        """
+        Adjust the isolation parameter to allocate more resources to the foreground workload.
+        (Does not actually isolate)
+
+        :return: current isolator object for method chaining
+        :rtype: Isolator
+        """
         pass
 
     @property
@@ -33,6 +39,13 @@ class Isolator(metaclass=ABCMeta):
 
     @abstractmethod
     def weaken(self) -> 'Isolator':
+        """
+        Adjust the isolation parameter to allocate less resources to the foreground workload.
+        (Does not actually isolate)
+
+        :return: current isolator object for method chaining
+        :rtype: Isolator
+        """
         pass
 
     @abstractmethod
@@ -40,28 +53,30 @@ class Isolator(metaclass=ABCMeta):
         pass
 
     def enforce(self) -> None:
+        """Actually applies the isolation parameter that set on the current object"""
         self._prev_metric_diff: MetricDiff = self._foreground_wl.calc_metric_diff()
 
         self._enforce()
 
     def yield_isolation(self) -> None:
-        self._force_strengthen = True
+        """
+        Declare to stop the configuration search for the current isolator.
+        Must be called when the current isolator yields the initiative.
+        """
+        self._is_fist_decision = True
+
+    @abstractmethod
+    def _first_decision(self) -> NextStep:
+        pass
 
     @abstractmethod
     def _monitoring_result(self) -> NextStep:
         pass
 
-    def monitoring_result(self) -> NextStep:
-        if self._force_strengthen:
-            self._force_strengthen = False
-            logger = logging.getLogger(__name__)
-
-            if self.is_max_level:
-                logger.debug('Not yet enforced, but there\'s no more configuration to search')
-                return NextStep.STOP
-            else:
-                logger.debug('Not yet enforced, force strengthen isolation')
-                return NextStep.STRENGTHEN
+    def decide_next_step(self) -> NextStep:
+        if self._is_fist_decision:
+            self._is_fist_decision = False
+            return self._first_decision()
 
         else:
             return self._monitoring_result()

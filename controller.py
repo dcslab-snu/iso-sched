@@ -149,7 +149,7 @@ class ControlThread(Thread):
 
                 cur_isolator: Isolator = group.cur_isolator
 
-                decided_next_step: NextStep = cur_isolator.monitoring_result()
+                decided_next_step: NextStep = cur_isolator.decide_next_step()
                 logger.info(f'Monitoring Result : {decided_next_step.name}')
 
                 if decided_next_step is NextStep.STRENGTHEN:
@@ -166,7 +166,7 @@ class ControlThread(Thread):
 
                 cur_isolator.enforce()
 
-            except psutil.NoSuchProcess or subprocess.CalledProcessError:
+            except (psutil.NoSuchProcess, subprocess.CalledProcessError, ProcessLookupError):
                 pass
 
             finally:
