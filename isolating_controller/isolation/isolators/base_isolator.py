@@ -14,7 +14,7 @@ class Isolator(metaclass=ABCMeta):
         self._foreground_wl = foreground_wl
         self._background_wl = background_wl
 
-        self._is_fist_decision: bool = True
+        self._is_first_decision: bool = True
 
     @abstractmethod
     def strengthen(self) -> 'Isolator':
@@ -63,7 +63,7 @@ class Isolator(metaclass=ABCMeta):
         Declare to stop the configuration search for the current isolator.
         Must be called when the current isolator yields the initiative.
         """
-        self._is_fist_decision = True
+        self._is_first_decision = True
 
     @abstractmethod
     def _first_decision(self) -> NextStep:
@@ -74,8 +74,8 @@ class Isolator(metaclass=ABCMeta):
         pass
 
     def decide_next_step(self) -> NextStep:
-        if self._is_fist_decision:
-            self._is_fist_decision = False
+        if self._is_first_decision:
+            self._is_first_decision = False
             return self._first_decision()
 
         else:

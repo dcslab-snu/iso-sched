@@ -1,11 +1,13 @@
 # coding: UTF-8
 
 import logging
-from typing import Dict, List, Sized, Tuple, Type
+from threading import RLock
+
+from typing import Dict, List, Sized, Type
 
 from isolating_controller.isolation.policies import IsolationPolicy
 from isolating_controller.workload import Workload
-from .isolating_controller.utils.numa_topology import NumaTopology
+from isolating_controller.utils.numa_topology import NumaTopology
 
 class PendingQueue(Sized):
     def __init__(self, policy_type: Type[IsolationPolicy], max_pending: int) -> None:
@@ -25,21 +27,22 @@ class PendingQueue(Sized):
     def add_bg(self, workload: Workload) -> None:
         logger = logging.getLogger(__name__)
         logger.info(f'{workload} is ready for active as Background')
+        logger.info(f'self._cur_pending: {self._cur_pending}')
 
-        if self._cur_pending < self._max_pending:
-            self._bg_q[workload.pid] = workload
-            self._cur_pending += 1
-        else:
+        self._bg_q[workload.pid] = workload
+        self._cur_pending += 1
+        if self._cur_pending == self._max_pending:
             self.dump_to_pending_list()
+
 
     def add_fg(self, workload: Workload) -> None:
         logger = logging.getLogger(__name__)
         logger.info(f'{workload} is ready for active as Foreground')
+        logger.info(f'self._cur_pending: {self._cur_pending}')
 
-        if self._cur_pending < self._max_pending:
-            self._fg_q[workload.pid] = workload
-            self._cur_pending += 1
-        else:
+        self._fg_q[workload.pid] = workload
+        self._cur_pending += 1
+        if self._cur_pending == self._max_pending:
             self.dump_to_pending_list()
 
     def pop(self) -> IsolationPolicy:
@@ -48,6 +51,9 @@ class PendingQueue(Sized):
         return self._pending_list.pop()
 
     def dump_to_pending_list(self) -> None:
+        logger = logging.getLogger(__name__)
+        logger.info('Dumping workloads to pending list!')
+
         fg_pids = list(self._fg_q.keys())
         bg_pids = list(self._bg_q.keys())
         all_pids = list()
@@ -69,19 +75,24 @@ class PendingQueue(Sized):
                 skt_id = self._bg_q[pid].get_socket_id()
                 group_pids[skt_id].add(pid)
 
+        logger.info('Trying to create new groups!')
+        #
         # Grouping pids based on their types and skt_id
         for node in node_list:
             node_pidset = group_pids[node]
             pid = node_pidset.pop()
+            print(f'Pop {pid}!')
             if pid in fg_pids:
                 bg_pid = node_pidset.pop()
-                new_group = self._policy_type(pid, bg_pid, node)
+                print(f'Pop {bg_pid}!')
+                new_group = self._policy_type(self._fg_q[pid], self._bg_q[bg_pid], node)
                 self._pending_list.append(new_group)
                 del self._fg_q[pid]
                 del self._bg_q[bg_pid]
             elif pid in bg_pids:
                 fg_pid = node_pidset.pop()
-                new_group = self._policy_type(fg_pid, pid, node)
+                print(f'Pop {fg_pid}!')
+                new_group = self._policy_type(self._fg_q[fg_pid], self._bg_q[pid], node)
                 self._pending_list.append(new_group)
                 del self._fg_q[fg_pid]
                 del self._bg_q[pid]

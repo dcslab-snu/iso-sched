@@ -11,8 +11,8 @@ from ...workload import Workload
 class GreedyDiffWViolationPolicy(GreedyDiffPolicy):
     VIOLATION_THRESHOLD = 3
 
-    def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
-        super().__init__(fg_wl, bg_wl)
+    def __init__(self, fg_wl: Workload, bg_wl: Workload, skt_id: int) -> None:
+        super().__init__(fg_wl, bg_wl, skt_id)
 
         self._violation_count: int = 0
 

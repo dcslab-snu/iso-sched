@@ -8,8 +8,8 @@ from ...workload import Workload
 
 
 class DiffPolicy(IsolationPolicy):
-    def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
-        super().__init__(fg_wl, bg_wl)
+    def __init__(self, fg_wl: Workload, bg_wl: Workload, skt_id: int) -> None:
+        super().__init__(fg_wl, bg_wl, skt_id)
 
         self._is_llc_isolated = False
         self._is_mem_isolated = False

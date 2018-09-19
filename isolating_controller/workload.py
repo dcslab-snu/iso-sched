@@ -2,7 +2,7 @@
 
 from collections import deque
 from itertools import chain
-from typing import Deque, Tuple, Dict, Set
+from typing import Deque, Tuple, Set
 
 import cpuinfo
 import psutil
@@ -82,11 +82,15 @@ class Workload:
         except psutil.NoSuchProcess:
             return tuple()
         
-    def get_socket_id(self):
-        cpuset = self.cpuset
-        cpu_topo, _ = await NumaTopology.get_numa_info()
+    def get_socket_id(self) -> int:
+        cpuset: Set[int] = self.cpuset
+        cpu_topo, _ = NumaTopology.get_numa_info()
+        ret = None
 
         # FIXME: Hardcode for assumption (one workload to one socket)
         for socket_id, skt_cpus in cpu_topo.items():
-            if cpuset in skt_cpus:
-                return socket_id
+            print(f'cpuset: {cpuset}, socket_id: {socket_id}, skt_cpus: {skt_cpus}')
+            for cpu_id in cpuset:
+                if cpu_id in skt_cpus:
+                    ret = socket_id
+                    return ret

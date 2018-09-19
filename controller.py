@@ -24,6 +24,7 @@ from isolating_controller.isolation.policies import DiffPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 from pending_queue import PendingQueue
+from threading import RLock
 
 MIN_PYTHON = (3, 6)
 
@@ -44,8 +45,10 @@ class MainController(metaclass=Singleton):
         self._rmq_host = 'localhost'
         self._rmq_creation_queue = 'workload_creation'
 
-        self._pending_wl = PendingQueue(DiffPolicy)
+        ## FIXME : Hard coded - PendingQueue can have four workloads at most (second argument)
+        self._pending_wl = PendingQueue(DiffPolicy, 4)
         self._control_thread = ControlThread(self._pending_wl)
+        self._lock = RLock()
 
     def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
         ch.basic_ack(method.delivery_tag)
@@ -67,10 +70,11 @@ class MainController(metaclass=Singleton):
             return
 
         workload = Workload(wl_name, wl_type, pid, perf_pid, perf_interval)
-
         if wl_type == 'bg':
+            logger.info(f'{workload} is background process')
             self._pending_wl.add_bg(workload)
         else:
+            logger.info(f'{workload} is foreground process')
             self._pending_wl.add_fg(workload)
 
         logger.info(f'{workload} is created')
