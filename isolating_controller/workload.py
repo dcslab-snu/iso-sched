@@ -31,6 +31,7 @@ class Workload:
         self._perf_interval = perf_interval
 
         self._proc_info = psutil.Process(pid)
+        self._socket_id = None
 
     def __repr__(self) -> str:
         return f'{self._name} (pid: {self._pid})'
@@ -50,6 +51,11 @@ class Workload:
     @property
     def metrics(self) -> Deque[BasicMetric]:
         return self._metrics
+
+    @property
+    def socket_id(self) -> int:
+        self._socket_id = self.get_socket_id()
+        return self._socket_id
 
     @property
     def cpuset(self) -> Tuple[int, ...]:
@@ -85,7 +91,6 @@ class Workload:
     def get_socket_id(self) -> int:
         cpuset: Set[int] = self.cpuset
         cpu_topo, _ = NumaTopology.get_numa_info()
-        ret = None
 
         # FIXME: Hardcode for assumption (one workload to one socket)
         for socket_id, skt_cpus in cpu_topo.items():
@@ -93,4 +98,5 @@ class Workload:
             for cpu_id in cpuset:
                 if cpu_id in skt_cpus:
                     ret = socket_id
+                    self._socket_id = ret
                     return ret
