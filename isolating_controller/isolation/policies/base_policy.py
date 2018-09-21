@@ -13,7 +13,6 @@ class ResourceType(IntEnum):
     CACHE = 0
     MEMORY = 1
 
-
 class IsolationPolicy(metaclass=ABCMeta):
     _IDLE_ISOLATOR: IdleIsolator = IdleIsolator()
 

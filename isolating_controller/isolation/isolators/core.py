@@ -26,9 +26,14 @@ class CoreIsolator(Isolator):
         self._fg_next_step = NextStep.IDLE
         self._bg_next_step = NextStep.IDLE
 
+        self._fg_grp_name: str = f'{foreground_wl.name}_{foreground_wl.pid}'
         self._bg_grp_name: str = f'{background_wl.name}_{background_wl.pid}'
+
+        self._prev_fg_affinity: Tuple[int] = foreground_wl.cpuset
         self._prev_bg_affinity: Tuple[int] = background_wl.cpuset
-        self._cgroup = Cgroup(self._bg_grp_name, 'cpuset,cpu')
+
+        self._fg_cgroup = Cgroup(self._fg_grp_name, 'cpuset,cpu')
+        self._bg_cgroup = Cgroup(self._bg_grp_name, 'cpuset,cpu')
 
         cpu_topo, mem_topo = NumaTopology.get_numa_info()
         self._cpu_topo: Dict[int, Set[int]] = cpu_topo
@@ -36,7 +41,9 @@ class CoreIsolator(Isolator):
 
     def __del__(self) -> None:
         if self._background_wl.is_running:
-            self._cgroup.assign_cpus(set(self._prev_bg_affinity))
+            self._bg_cgroup.assign_cpus(set(self._prev_bg_affinity))
+        if self._foreground_wl.is_running:
+            self._fg_cgroup.assign_cpus(set(self._prev_fg_affinity))
 
     def strengthen(self) -> 'CoreIsolator':
         """
@@ -97,8 +104,8 @@ class CoreIsolator(Isolator):
         logger.info(f'affinity of background is {hyphen.convert_to_hyphen(self._bg_cpuset)}')
         logger.info(f'affinity of foreground is {hyphen.convert_to_hyphen(self._fg_cpuset)}')
 
-        self._cgroup.assign_cpus(set(self._bg_cpuset))
-        self._cgroup.assign_cpus(set(self._fg_cpuset))
+        self._bg_cgroup.assign_cpus(set(self._bg_cpuset))
+        self._fg_cgroup.assign_cpus(set(self._fg_cpuset))
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()

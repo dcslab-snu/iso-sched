@@ -1,11 +1,12 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional
+from typing import Optional, Dict, Set
 
 from .base_isolator import Isolator
 from .. import NextStep
-from ...utils import CAT
+from ...utils import ResCtrl
+from ...utils import NumaTopology
 from ...workload import Workload
 
 
@@ -20,33 +21,32 @@ class CacheIsolator(Isolator):
         self._cur_step: Optional[int] = None
 
         self._fg_grp_name = f'{foreground_wl.name}_{foreground_wl.pid}'
-        CAT.create_group(self._fg_grp_name)
-        for tid in foreground_wl.all_child_tid():
-            CAT.add_task(self._fg_grp_name, tid)
-
         self._bg_grp_name = f'{background_wl.name}_{background_wl.pid}'
-        CAT.create_group(self._bg_grp_name)
-        for tid in background_wl.all_child_tid():
-            CAT.add_task(self._bg_grp_name, tid)
+
+        self._fg_resctrl = ResCtrl(self._fg_grp_name)
+        self._bg_resctrl = ResCtrl(self._bg_grp_name)
 
     def __del__(self) -> None:
         logger = logging.getLogger(__name__)
 
+        max_bits = ResCtrl.MAX_BITS
+        max_mask = ResCtrl.gen_mask(0, max_bits)
+
         if self._foreground_wl.is_running:
             logger.debug(f'reset resctrl configuration of {self._foreground_wl}')
-            # FIXME: hard coded
-            CAT.assign(self._fg_grp_name, '1', CAT.gen_mask(0, CAT.MAX))
+            # FIXME: The number of socket is two at most
+            ResCtrl.assign_llc(self._fg_resctrl, max_mask, max_mask)
 
         if self._background_wl.is_running:
             logger.debug(f'reset resctrl configuration of {self._background_wl}')
-            # FIXME: hard coded
-            CAT.assign(self._bg_grp_name, '1', CAT.gen_mask(0, CAT.MAX))
+            # FIXME: The number of socket is two at most
+            ResCtrl.assign_llc(self._bg_resctrl, max_mask, max_mask)
 
     def strengthen(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
 
         if self._cur_step is None:
-            self._cur_step = CAT.MAX // 2
+            self._cur_step = ResCtrl.MAX_BITS // 2
         else:
             self._cur_step += 1
 
@@ -66,34 +66,50 @@ class CacheIsolator(Isolator):
     @property
     def is_max_level(self) -> bool:
         # FIXME: hard coded
-        return self._cur_step is not None and self._cur_step + CAT.STEP >= CAT.MAX
+        return self._cur_step is not None and self._cur_step + ResCtrl.STEP >= ResCtrl.MAX_BITS
 
     @property
     def is_min_level(self) -> bool:
         # FIXME: hard coded
-        return self._cur_step is None or self._cur_step - CAT.STEP <= CAT.MIN
+        return self._cur_step is None or self._cur_step - ResCtrl.STEP <= ResCtrl.MIN_BITS
 
     def _enforce(self) -> None:
         logger = logging.getLogger(__name__)
 
+        bg_socket_id = self._background_wl.socket_id
+        fg_socket_id = self._foreground_wl.socket_id
+
         if self._cur_step is None:
             logger.info('CAT off')
 
-            # FIXME: hard coded
-            mask = CAT.gen_mask(0, CAT.MAX)
-            CAT.assign(self._fg_grp_name, '1', mask)
-            CAT.assign(self._bg_grp_name, '1', mask)
+            # FIXME: The number of socket is two at most
+            mask = ResCtrl.gen_mask(0, ResCtrl.MAX_BITS)
+            if bg_socket_id == 0:
+                ResCtrl.assign_llc(self._bg_resctrl, mask, '1')
+            if bg_socket_id == 1:
+                ResCtrl.assign_llc(self._bg_resctrl, '1', mask)
+            if fg_socket_id == 0:
+                ResCtrl.assign_llc(self._fg_resctrl, mask, '1')
+            if fg_socket_id == 1:
+                ResCtrl.assign_llc(self._fg_resctrl, '1', mask)
 
         else:
-            logger.info(f'foreground : background = {self._cur_step} : {CAT.MAX - self._cur_step}')
+            logger.info(f'foreground : background = {self._cur_step} : {ResCtrl.MAX_BITS - self._cur_step}')
 
-            # FIXME: hard coded
-            fg_mask = CAT.gen_mask(0, self._cur_step)
-            CAT.assign(self._fg_grp_name, '1', fg_mask)
+            # FIXME: The number of socket is two at most
+            fg_mask = ResCtrl.gen_mask(0, self._cur_step)
+            if fg_socket_id == 0:
+                ResCtrl.assign_llc(self._fg_resctrl, fg_mask, '1')
+            if fg_socket_id == 1:
+                ResCtrl.assign_llc(self._fg_resctrl, '1', fg_mask)
 
-            # FIXME: hard coded
-            bg_mask = CAT.gen_mask(self._cur_step)
-            CAT.assign(self._bg_grp_name, '1', bg_mask)
+            # FIXME: The number of socket is two at most
+            bg_mask = ResCtrl.gen_mask(self._cur_step)
+            if bg_socket_id == 0:
+                ResCtrl.assign_llc(self._bg_resctrl, bg_mask, '1')
+            if bg_socket_id == 1:
+                ResCtrl.assign_llc(self._bg_resctrl, '1', bg_mask)
+
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
@@ -128,7 +144,7 @@ class CacheIsolator(Isolator):
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
         if self._cur_step is not None \
-                and not (CAT.MIN < self._cur_step < CAT.MAX) \
+                and not (ResCtrl.MIN_BITS < self._cur_step < ResCtrl.MAX_BITS) \
                 or abs(diff_of_diff) <= CacheIsolator._DOD_THRESHOLD \
                 or abs(curr_diff) <= CacheIsolator._DOD_THRESHOLD:
             return NextStep.STOP
