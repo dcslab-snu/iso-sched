@@ -3,7 +3,7 @@
 import logging
 
 from .base_policy import IsolationPolicy, ResourceType
-from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, CoreIsolator
 from ...workload import Workload
 
 
@@ -35,7 +35,7 @@ class GreedyDiffPolicy(IsolationPolicy):
             return True
 
         elif resource is ResourceType.MEMORY:
-            self._cur_isolator = self._isolator_map[SchedIsolator]
+            self._cur_isolator = self._isolator_map[CoreIsolator]
             self._is_mem_isolated = False
             logger.info(f'Cpuset Isolation for {self._fg_wl} is started')
             return True

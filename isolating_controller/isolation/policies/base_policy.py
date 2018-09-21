@@ -5,7 +5,7 @@ from enum import IntEnum
 from typing import Mapping, Type
 
 from isolating_controller.metric_container.basic_metric import MetricDiff
-from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
+from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, CoreIsolator
 from ...workload import Workload
 
 
@@ -35,7 +35,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._isolator_map = dict((
             (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
             (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
-            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl))
+            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl))
         ))
 
     @property

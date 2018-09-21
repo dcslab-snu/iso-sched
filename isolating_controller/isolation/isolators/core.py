@@ -6,13 +6,12 @@ from typing import Tuple, Set, Dict
 
 from .base_isolator import Isolator
 from .. import NextStep
-#from ...utils import CgroupCpuset
 from ...workload import Workload
 from ...utils import Cgroup
 from ...utils import NumaTopology
 from ...utils import hyphen
 
-class SchedIsolator(Isolator):
+class CoreIsolator(Isolator):
     _DOD_THRESHOLD = 0.005
     _FORCE_THRESHOLD = 0.1
 
@@ -39,10 +38,10 @@ class SchedIsolator(Isolator):
         if self._background_wl.is_running:
             self._cgroup.assign_cpus(set(self._prev_bg_affinity))
 
-    def strengthen(self) -> 'SchedIsolator':
+    def strengthen(self) -> 'CoreIsolator':
         """
         Strengthen reduces the number of CPUs assigned to BG workloads and increase that of FG workload
-        TODO: Changing Step Size if needed
+        TODO: Changing step size, if needed
         :return:
         """
         # NOTE: Caller is assumed that BG workload
@@ -58,10 +57,10 @@ class SchedIsolator(Isolator):
             self._fg_cpuset = tuple(fg_cpuset)
         return self
 
-    def weaken(self) -> 'SchedIsolator':
+    def weaken(self) -> 'CoreIsolator':
         """
         Weaken increase the number of CPUs assigned to BG workloads and decrease that of FG workload
-        TODO: Changing Step Size if needed
+        TODO: Changing step size, if needed
         :return:
         """
         # NOTE: Caller is assumed that BG workload
@@ -96,8 +95,8 @@ class SchedIsolator(Isolator):
     def _enforce(self) -> None:
         logger = logging.getLogger(__name__)
         logger.info(f'affinity of background is {hyphen.convert_to_hyphen(self._bg_cpuset)}')
+        logger.info(f'affinity of foreground is {hyphen.convert_to_hyphen(self._fg_cpuset)}')
 
-        # FIXME: Only changing the number of CPUs of BG process
         self._cgroup.assign_cpus(set(self._bg_cpuset))
         self._cgroup.assign_cpus(set(self._fg_cpuset))
 
@@ -108,17 +107,29 @@ class SchedIsolator(Isolator):
         logger = logging.getLogger(__name__)
         logger.debug(f'current diff: {curr_diff:>7.4f}')
 
+        ## FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
+        fg_strengthen_cond = None
+        fg_weaken_cond = None
         if curr_diff < 0:
             if self.is_max_level:
+                self._bg_next_step = NextStep.STOP
                 return NextStep.STOP
             else:
+                self._bg_next_step = NextStep.STRENGTHEN
+                if fg_weaken_cond:
+                    self._fg_next_step = NextStep.WEAKEN
                 return NextStep.STRENGTHEN
-        elif curr_diff <= SchedIsolator._FORCE_THRESHOLD:
+        elif curr_diff <= CoreIsolator._FORCE_THRESHOLD:
+            self._bg_next_step = NextStep.STOP
             return NextStep.STOP
         else:
             if self.is_min_level:
+                self._bg_next_step = NextStep.STOP
                 return NextStep.STOP
             else:
+                self._bg_next_step = NextStep.WEAKEN
+                if fg_strengthen_cond:
+                    self._fg_next_step = NextStep.STRENGTHEN
                 return NextStep.WEAKEN
 
     def _monitoring_result(self) -> NextStep:
@@ -132,16 +143,26 @@ class SchedIsolator(Isolator):
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
-        # FIXME: hard coded
-        if not (24 < self._cur_step < 31) \
-                or abs(diff_of_diff) <= SchedIsolator._DOD_THRESHOLD \
-                or abs(curr_diff) <= SchedIsolator._DOD_THRESHOLD:
+        # FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
+        fg_strengthen_cond = None
+        fg_weaken_cond = None
+        max_bg_cpuid = max(self._cpu_topo[self._background_wl.socket_id])
+        min_bg_cpuid = min(self._cpu_topo[self._background_wl.socket_id])
+        if not (min_bg_cpuid < self._cur_bg_step < max_bg_cpuid) \
+                or abs(diff_of_diff) <= CoreIsolator._DOD_THRESHOLD \
+                or abs(curr_diff) <= CoreIsolator._DOD_THRESHOLD:
+            self._bg_next_step = NextStep.STOP
+            self._fg_next_step = NextStep.STOP
             return NextStep.STOP
 
         elif curr_diff > 0:
             self._bg_next_step = NextStep.WEAKEN
+            if fg_strengthen_cond:
+                self._fg_next_step = NextStep.STRENGTHEN
             return NextStep.WEAKEN
 
         else:
             self._bg_next_step = NextStep.STRENGTHEN
+            if fg_weaken_cond:
+                self._fg_next_step = NextStep.WEAKEN
             return NextStep.STRENGTHEN
