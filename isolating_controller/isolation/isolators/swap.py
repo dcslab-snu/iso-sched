@@ -18,6 +18,8 @@ class SwapIsolator(Isolator):
 
         self._all_groups = isolation_groups
         self._swap_candidates: Set[Workload] = None
+        self._most_contentious_group = None
+        self._most_contentious_workload = None
 
     def __del__(self):
         logger = logging.getLogger(__name__)
@@ -28,16 +30,16 @@ class SwapIsolator(Isolator):
             logger.debug(f'reset swap configuration of {self._background_wl}')
 
 
-    def strengthen(self) -> 'Isolator':
+    def strengthen(self) -> 'SwapIsolator':
         """
         Choosing which contentious workloads to swap out to other socket
         :return:
         """
         # FIXME: hard coded (two sockets)
-        ## Estimating the socket contention
-        ##
+        ## 1.Estimating and selecting the most contentious workloads from the socket of cur_group
+        ## 2.
 
-        return
+        return self
 
     @property
     def is_max_level(self) -> bool:
@@ -46,9 +48,9 @@ class SwapIsolator(Isolator):
         e.g., There is no searchable candidate to strengthen the degree of isolation
         :return:
         """
-        # FIXME:
+        # FIXME: hard coded
+        return self._swap_candidates == None
 
-        return False
 
     @property
     def is_min_level(self) -> bool:
@@ -57,17 +59,18 @@ class SwapIsolator(Isolator):
         e.g., There is no searchable candidate to weaken the degree of isolation
         :return:
         """
-        # FIXME:
+        # FIXME: hard coded
+        return self._swap_candidates == None
 
-        return False
 
-    def weaken(self) -> 'Isolator':
+    def weaken(self) -> 'SwapIsolator':
         """
         Choosing which contentious workloads to swap in from other socket
         :return:
         """
         # FIXME: hard coded (two sockets)
-        pass
+        ## 1.Estimating and selecting the most contentious workloads from the socket of other_group
+        return self
 
     def _enforce(self) -> None:
         """
@@ -82,7 +85,15 @@ class SwapIsolator(Isolator):
 #        self._enforce()
 
     def _first_decision(self) -> NextStep:
+        """
+        How to choose the first candidate?
+        :return:
+        """
         pass
 
     def _monitoring_result(self) -> NextStep:
+        """
+        If the effect of swapping is getting worse, then rollback??
+        :return:
+        """
         pass

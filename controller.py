@@ -143,6 +143,8 @@ class ControlThread(Thread):
     def _isolate_workloads(self) -> None:
         logger = logging.getLogger(__name__)
 
+        ##TODO: Swapper may come here
+
         for group, iteration_num in self._isolation_groups.items():
             logger.info('')
             logger.info(f'***************isolation of {group.name} #{iteration_num}***************')
