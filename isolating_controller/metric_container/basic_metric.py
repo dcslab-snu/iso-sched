@@ -71,7 +71,7 @@ class BasicMetric:
         return self._req_date
 
     @property
-    def ipc(self):
+    def ipc(self) -> float:
         return self._instructions / self._cycles
 
     @property
@@ -113,6 +113,7 @@ class MetricDiff:
         self._l3_hit_ratio = curr.l3hit_ratio - prev.l3hit_ratio
         self._local_mem_ps = curr.local_mem_ps() / prev.local_mem_ps() - 1
         self._remote_mem_ps = curr.remote_mem_ps() / prev.remote_mem_ps() - 1
+        self._ipc = curr.ipc - prev.ipc
 
     @property
     def l3_hit_ratio(self):
@@ -125,6 +126,10 @@ class MetricDiff:
     @property
     def remote_mem_ps(self):
         return self._remote_mem_ps
+
+    @property
+    def ipc(self):
+        return self._ipc
 
     def __repr__(self) -> str:
         return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, Local Memory access diff: {self._local_mem_ps:>6.03f}'

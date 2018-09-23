@@ -80,22 +80,23 @@ class PendingQueue(Sized):
         # Grouping pids based on their types and skt_id
         for node in node_list:
             node_pidset = group_pids[node]
-            pid = node_pidset.pop()
-            print(f'Pop {pid}!')
-            if pid in fg_pids:
-                bg_pid = node_pidset.pop()
-                print(f'Pop {bg_pid}!')
-                new_group = self._policy_type(self._fg_q[pid], self._bg_q[bg_pid], node)
-                self._pending_list.append(new_group)
-                del self._fg_q[pid]
-                del self._bg_q[bg_pid]
-            elif pid in bg_pids:
-                fg_pid = node_pidset.pop()
-                print(f'Pop {fg_pid}!')
-                new_group = self._policy_type(self._fg_q[fg_pid], self._bg_q[pid], node)
-                self._pending_list.append(new_group)
-                del self._fg_q[fg_pid]
-                del self._bg_q[pid]
+            if len(node_pidset) > 0:
+                pid = node_pidset.pop()
+                print(f'Pop {pid}!')
+                if pid in fg_pids:
+                    bg_pid = node_pidset.pop()
+                    print(f'Pop {bg_pid}!')
+                    new_group = self._policy_type(self._fg_q[pid], self._bg_q[bg_pid], node)
+                    self._pending_list.append(new_group)
+                    del self._fg_q[pid]
+                    del self._bg_q[bg_pid]
+                elif pid in bg_pids:
+                    fg_pid = node_pidset.pop()
+                    print(f'Pop {fg_pid}!')
+                    new_group = self._policy_type(self._fg_q[fg_pid], self._bg_q[pid], node)
+                    self._pending_list.append(new_group)
+                    del self._fg_q[fg_pid]
+                    del self._bg_q[pid]
         return
 
     def update_max_pending(self, new_max_pending: int):

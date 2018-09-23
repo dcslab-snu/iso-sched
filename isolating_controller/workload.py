@@ -94,7 +94,7 @@ class Workload:
 
         # FIXME: Hardcode for assumption (one workload to one socket)
         for socket_id, skt_cpus in cpu_topo.items():
-            print(f'cpuset: {cpuset}, socket_id: {socket_id}, skt_cpus: {skt_cpus}')
+            #print(f'cpuset: {cpuset}, socket_id: {socket_id}, skt_cpus: {skt_cpus}')
             for cpu_id in cpuset:
                 if cpu_id in skt_cpus:
                     ret = socket_id

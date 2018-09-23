@@ -14,6 +14,9 @@ class Isolator(metaclass=ABCMeta):
         self._foreground_wl = foreground_wl
         self._background_wl = background_wl
 
+        self._fg_next_step = NextStep.IDLE
+        self._bg_next_step = NextStep.IDLE
+
         self._is_first_decision: bool = True
 
     @abstractmethod
