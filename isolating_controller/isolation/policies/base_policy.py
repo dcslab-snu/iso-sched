@@ -10,11 +10,15 @@ from ...workload import Workload
 
 
 class ResourceType(IntEnum):
-    CACHE = 0
-    MEMORY = 1
+    CPU = 0
+    CACHE = 1
+    MEMORY = 2
+
 
 class IsolationPolicy(metaclass=ABCMeta):
     _IDLE_ISOLATOR: IdleIsolator = IdleIsolator()
+    # FIXME : _CPU_THRESHOLD needs test
+    _CPU_THRESHOLD = 0.01
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload, skt_id: int) -> None:
         self._fg_wl = fg_wl
@@ -51,6 +55,9 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         logger = logging.getLogger(__name__)
         logger.info(repr(metric_diff))
+        if abs(metric_diff.local_mem_util_ps) < IsolationPolicy._CPU_THRESHOLD \
+                and abs(metric_diff.l3_hit_ratio) < IsolationPolicy._CPU_THRESHOLD:
+                return ResourceType.CPU
 
         if metric_diff.local_mem_util_ps > 0 and metric_diff.l3_hit_ratio > 0:
             if metric_diff.l3_hit_ratio > metric_diff.local_mem_util_ps:

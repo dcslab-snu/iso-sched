@@ -15,7 +15,7 @@ class CacheIsolator(Isolator):
     _FORCE_THRESHOLD = 0.1
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        super().__init__(foreground_wl, background_wl)
+        super().__init__(foreground_wl, background_wl, None)
 
         self._prev_step: Optional[int] = None
         self._cur_step: Optional[int] = None

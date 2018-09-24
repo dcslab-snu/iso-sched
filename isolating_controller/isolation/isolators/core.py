@@ -16,15 +16,12 @@ class CoreIsolator(Isolator):
     _FORCE_THRESHOLD = 0.1
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        super().__init__(foreground_wl, background_wl)
+        super().__init__(foreground_wl, background_wl, None)
 
         self._fg_cpuset: Tuple[int] = foreground_wl.cpuset
         self._bg_cpuset: Tuple[int] = background_wl.cpuset
         self._cur_bg_step: int = min(self._bg_cpuset)
         self._cur_fg_step: int = max(self._fg_cpuset)
-
-        #self._fg_next_step = NextStep.IDLE
-        #self._bg_next_step = NextStep.IDLE
 
         self._fg_grp_name: str = f'{foreground_wl.name}_{foreground_wl.pid}'
         self._bg_grp_name: str = f'{background_wl.name}_{background_wl.pid}'
@@ -196,7 +193,7 @@ class CoreIsolator(Isolator):
         if abs(diff_of_diff) <= CoreIsolator._DOD_THRESHOLD \
             or abs(curr_diff) <= CoreIsolator._DOD_THRESHOLD:
             self._bg_next_step = NextStep.STOP
-            self._fg_next_step = NextStep.STOP # This line depends on bg status
+            #self._fg_next_step = NextStep.STOP # This line depends on bg status
             return NextStep.STOP
 
         # Case2 : FG shows lower contention than solo-run -> Slower FG or Faster BG

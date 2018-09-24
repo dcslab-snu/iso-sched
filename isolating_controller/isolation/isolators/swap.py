@@ -14,7 +14,7 @@ class SwapIsolator(Isolator):
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload,
                  isolation_groups: Dict[IsolationPolicy, int]) -> None:
-        super().__init__(foreground_wl, background_wl)
+        super().__init__(foreground_wl, background_wl, None)
 
         self._all_groups = isolation_groups
         self._swap_candidates: Set[Workload] = None

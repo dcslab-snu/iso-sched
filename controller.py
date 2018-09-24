@@ -20,7 +20,7 @@ from pika.spec import Basic
 import isolating_controller
 from isolating_controller.isolation import NextStep
 from isolating_controller.isolation.isolators import Isolator
-from isolating_controller.isolation.policies import GreedyDiffWViolationPolicy, IsolationPolicy
+from isolating_controller.isolation.policies import GreedyDiffWViolationPolicy, DiffCPUPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 from pending_queue import PendingQueue
@@ -46,7 +46,7 @@ class MainController(metaclass=Singleton):
         self._rmq_creation_queue = 'workload_creation'
 
         ## FIXME : Hard coded - PendingQueue can have four workloads at most (second argument)
-        self._pending_wl = PendingQueue(GreedyDiffWViolationPolicy, 2)
+        self._pending_wl = PendingQueue(DiffCPUPolicy, 2)
         self._control_thread = ControlThread(self._pending_wl)
         self._lock = RLock()
 
@@ -145,7 +145,7 @@ class ControlThread(Thread):
     def _isolate_workloads(self) -> None:
         logger = logging.getLogger(__name__)
 
-        ##TODO: Swapper may come here
+        ## TODO: Swapper may come here
 
         for group, iteration_num in self._isolation_groups.items():
             logger.info('')

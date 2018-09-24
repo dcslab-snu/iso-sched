@@ -2,13 +2,16 @@
 
 from abc import ABCMeta, abstractmethod
 
+from typing import Optional
+
 from .. import NextStep
 from ...metric_container.basic_metric import MetricDiff
 from ...workload import Workload
+from ..policies.base_policy import IsolationPolicy, ResourceType
 
 
 class Isolator(metaclass=ABCMeta):
-    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
+    def __init__(self, foreground_wl: Workload, background_wl: Workload, cont_resource: Optional[ResourceType]) -> None:
         self._prev_metric_diff: MetricDiff = foreground_wl.calc_metric_diff()
 
         self._foreground_wl = foreground_wl
@@ -18,6 +21,7 @@ class Isolator(metaclass=ABCMeta):
         self._bg_next_step = NextStep.IDLE
 
         self._is_first_decision: bool = True
+        self._contentious_resource: Optional[ResourceType] = cont_resource
 
     @abstractmethod
     def strengthen(self) -> 'Isolator':
