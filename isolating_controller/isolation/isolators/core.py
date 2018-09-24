@@ -10,6 +10,7 @@ from ...workload import Workload
 from ...utils import Cgroup
 from ...utils import NumaTopology
 from ...utils import hyphen
+from ..policies.base_policy import ResourceType
 
 class CoreIsolator(Isolator):
     _DOD_THRESHOLD = 0.005
@@ -141,8 +142,8 @@ class CoreIsolator(Isolator):
         logger.debug(f'current diff: {curr_diff:>7.4f}')
 
         ## FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
-        fg_strengthen_cond = None
-        fg_weaken_cond = None
+        fg_strengthen_cond = self.fg_strengthen_cond(metric_diff.ipc)
+        fg_weaken_cond = self.fg_weaken_cond(metric_diff.ipc)
         if curr_diff < 0:
             if self.is_max_level:
                 self._bg_next_step = NextStep.STOP
@@ -167,10 +168,17 @@ class CoreIsolator(Isolator):
 
     def _monitoring_result(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
+        curr_diff = None
+        diff_of_diff = None
 
-        curr_diff = metric_diff.local_mem_util_ps
-        prev_diff = self._prev_metric_diff.local_mem_util_ps
-        diff_of_diff = curr_diff - prev_diff
+        if self._contentious_resource == ResourceType.MEMORY:
+            curr_diff = metric_diff.local_mem_util_ps
+            prev_diff = self._prev_metric_diff.local_mem_util_ps
+            diff_of_diff = curr_diff - prev_diff
+        elif self._contentious_resource == ResourceType.CPU:
+            curr_diff = metric_diff.ipc
+            prev_diff = self._prev_metric_diff.ipc
+            diff_of_diff = curr_diff - prev_diff
 
         logger = logging.getLogger(__name__)
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')

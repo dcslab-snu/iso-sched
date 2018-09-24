@@ -7,7 +7,7 @@ from typing import Optional
 from .. import NextStep
 from ...metric_container.basic_metric import MetricDiff
 from ...workload import Workload
-from ..policies.base_policy import IsolationPolicy, ResourceType
+from ..policies.base_policy import ResourceType
 
 
 class Isolator(metaclass=ABCMeta):

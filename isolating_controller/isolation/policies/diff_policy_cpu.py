@@ -30,7 +30,7 @@ class DiffCPUPolicy(IsolationPolicy):
 
         resource: ResourceType = self.contentious_resource()
 
-        if not self._is_core_isolated and resource is ResourceType.CPU:
+        if resource is ResourceType.CPU:
             self._cur_isolator = self._isolator_map[CoreIsolator]
             self._cur_isolator._contentious_resource = ResourceType.CPU
             logger.info(f'Core Isolation for {self._fg_wl} is started to isolate {ResourceType.CPU.name}s')

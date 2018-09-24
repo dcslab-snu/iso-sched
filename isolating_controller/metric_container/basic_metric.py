@@ -132,4 +132,5 @@ class MetricDiff:
         return self._ipc
 
     def __repr__(self) -> str:
-        return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, Local Memory access diff: {self._local_mem_ps:>6.03f}'
+        return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, Local Memory access diff: {self._local_mem_ps:>6.03f},' \
+               f'IPC diff: {self.ipc:>06.03f}'

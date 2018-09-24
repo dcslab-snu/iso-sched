@@ -13,7 +13,7 @@ class DiffPolicy(IsolationPolicy):
 
         self._is_llc_isolated = False
         self._is_mem_isolated = False
-        self._is_sched_isolated = False
+        self._is_core_isolated = False
 
     @property
     def new_isolator_needed(self) -> bool:
@@ -22,7 +22,7 @@ class DiffPolicy(IsolationPolicy):
     def _clear_flags(self) -> None:
         self._is_llc_isolated = False
         self._is_mem_isolated = False
-        self._is_sched_isolated = False
+        self._is_core_isolated = False
 
     def choose_next_isolator(self) -> bool:
         logger = logging.getLogger(__name__)
@@ -42,9 +42,9 @@ class DiffPolicy(IsolationPolicy):
             logger.info(f'Memory Bandwidth Isolation for {self._fg_wl} is started')
             return True
 
-        elif not self._is_sched_isolated and resource is ResourceType.MEMORY:
+        elif not self._is_core_isolated and resource is ResourceType.MEMORY:
             self._cur_isolator = self._isolator_map[CoreIsolator]
-            self._is_sched_isolated = True
+            self._is_core_isolated = True
             logger.info(f'Core Isolation for {self._fg_wl} is started')
             return True
 
