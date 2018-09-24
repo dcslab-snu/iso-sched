@@ -1,12 +1,11 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional, Dict, Set
+from typing import Optional
 
 from .base_isolator import Isolator
-from .. import NextStep
+from .. import NextStep, ResourceType
 from ...utils import ResCtrl
-from ...utils import NumaTopology
 from ...workload import Workload
 
 
@@ -14,8 +13,8 @@ class CacheIsolator(Isolator):
     _DOD_THRESHOLD = 0.005
     _FORCE_THRESHOLD = 0.1
 
-    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        super().__init__(foreground_wl, background_wl, None)
+    def __init__(self, foreground_wl: Workload, background_wl: Workload, cont_resource: Optional[ResourceType]) -> None:
+        super().__init__(foreground_wl, background_wl, cont_resource)
 
         self._prev_step: Optional[int] = None
         self._cur_step: Optional[int] = None

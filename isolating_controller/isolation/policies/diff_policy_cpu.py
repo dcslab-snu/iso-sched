@@ -2,7 +2,8 @@
 
 import logging
 
-from .base_policy import IsolationPolicy, ResourceType
+from .. import ResourceType
+from .base_policy import IsolationPolicy
 from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, CoreIsolator
 from ...workload import Workload
 

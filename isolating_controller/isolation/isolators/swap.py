@@ -9,6 +9,7 @@ from .. import NextStep
 from ...workload import Workload
 from ..policies import IsolationPolicy
 
+
 class SwapIsolator(Isolator):
     _THRESHOLD = 0.005
 

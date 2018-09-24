@@ -1,24 +1,18 @@
 # coding: UTF-8
 import logging
 from abc import ABCMeta, abstractmethod
-from enum import IntEnum
 from typing import Mapping, Type
 
-from isolating_controller.metric_container.basic_metric import MetricDiff
+from isolating_controller.metric_container.basic_metric import MetricDiff, BasicMetric
 from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, CoreIsolator
 from ...workload import Workload
-
-
-class ResourceType(IntEnum):
-    CPU = 0
-    CACHE = 1
-    MEMORY = 2
+from .. import ResourceType
 
 
 class IsolationPolicy(metaclass=ABCMeta):
     _IDLE_ISOLATOR: IdleIsolator = IdleIsolator()
     # FIXME : _CPU_THRESHOLD needs test
-    _CPU_THRESHOLD = 0.01
+    _CPU_THRESHOLD = 0.1
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload, skt_id: int) -> None:
         self._fg_wl = fg_wl
@@ -34,11 +28,12 @@ class IsolationPolicy(metaclass=ABCMeta):
     def __repr__(self) -> str:
         return f'{self.__class__.__name__} <fg: {self._fg_wl}, bg: {self._bg_wl}>'
 
+    # FIXME: If you use policy without CPUIso., then changing ResourceType.Unknown to ResourceType.Memory
     def init_isolators(self) -> None:
         self._isolator_map = dict((
-            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
-            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
-            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl))
+            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl, ResourceType.CACHE)),
+            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl, ResourceType.MEMORY)),
+            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl, ResourceType.Unknown))
         ))
 
     @property
@@ -52,11 +47,13 @@ class IsolationPolicy(metaclass=ABCMeta):
 
     def contentious_resource(self) -> ResourceType:
         metric_diff: MetricDiff = self._fg_wl.calc_metric_diff()
+        cur_metric: BasicMetric = self._fg_wl.metrics[0]
 
         logger = logging.getLogger(__name__)
         logger.info(repr(metric_diff))
-        if abs(metric_diff.local_mem_util_ps) < IsolationPolicy._CPU_THRESHOLD \
-                and abs(metric_diff.l3_hit_ratio) < IsolationPolicy._CPU_THRESHOLD:
+        logger.info(f'l3_int: {cur_metric.l3_intensity}, mem_int: {cur_metric.mem_intensity}')
+        if abs(cur_metric.l3_intensity) < IsolationPolicy._CPU_THRESHOLD \
+                and abs(cur_metric.mem_intensity) < IsolationPolicy._CPU_THRESHOLD:
                 return ResourceType.CPU
 
         if metric_diff.local_mem_util_ps > 0 and metric_diff.l3_hit_ratio > 0:

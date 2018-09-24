@@ -20,7 +20,7 @@ from pika.spec import Basic
 import isolating_controller
 from isolating_controller.isolation import NextStep
 from isolating_controller.isolation.isolators import Isolator
-from isolating_controller.isolation.policies import GreedyDiffWViolationPolicy, DiffCPUPolicy, IsolationPolicy
+from isolating_controller.isolation.policies import GreedyDiffWViolationPolicy, DiffCPUPolicy, DiffPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 from pending_queue import PendingQueue

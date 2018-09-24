@@ -2,6 +2,8 @@
 
 from time import localtime, strftime
 
+LLC_SIZE: float = 41943040
+
 
 class BasicMetric:
     def __init__(self, l2miss, l3miss, inst, cycles, stall_cycles, wall_cycles, intra_coh, inter_coh, llc_size,
@@ -95,9 +97,17 @@ class BasicMetric:
         return 1 - self._l3miss / self._l2miss
 
     @property
+    def llc_util(self) -> float:
+        return self._llc_size/LLC_SIZE
+
+    @property
     def l3_intensity(self):
         l3_hit_ratio = 1 - self.l3miss_ratio
-        return self._llc_size * l3_hit_ratio
+        return self.llc_util * l3_hit_ratio
+
+    @property
+    def mem_intensity(self):
+        return self.llc_util * self.l3miss_ratio
 
     def __str__(self):
         return ', '.join(map(str, (
@@ -132,5 +142,6 @@ class MetricDiff:
         return self._ipc
 
     def __repr__(self) -> str:
-        return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, Local Memory access diff: {self._local_mem_ps:>6.03f},' \
-               f'IPC diff: {self.ipc:>06.03f}'
+        return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, ' \
+               f'Local Memory access diff: {self._local_mem_ps:>6.03f}, ' \
+               f'IPC diff: {self.ipc:>6.03f}'

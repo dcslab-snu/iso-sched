@@ -1,7 +1,6 @@
 # coding: UTF-8
 
 import logging
-from threading import RLock
 
 from typing import Dict, List, Sized, Type
 

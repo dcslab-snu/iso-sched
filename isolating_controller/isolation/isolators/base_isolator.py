@@ -4,10 +4,9 @@ from abc import ABCMeta, abstractmethod
 
 from typing import Optional
 
-from .. import NextStep
+from .. import NextStep, ResourceType
 from ...metric_container.basic_metric import MetricDiff
 from ...workload import Workload
-from ..policies.base_policy import ResourceType
 
 
 class Isolator(metaclass=ABCMeta):

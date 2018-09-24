@@ -2,7 +2,7 @@
 
 import logging
 
-from .base_policy import ResourceType
+from .. import ResourceType
 from .greedy_diff_policy import GreedyDiffPolicy
 from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, CoreIsolator
 from ...workload import Workload
