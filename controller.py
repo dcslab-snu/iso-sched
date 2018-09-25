@@ -48,7 +48,6 @@ class MainController(metaclass=Singleton):
         ## FIXME : Hard coded - PendingQueue can have four workloads at most (second argument)
         self._pending_wl = PendingQueue(DiffCPUPolicy, 2)
         self._control_thread = ControlThread(self._pending_wl)
-        self._lock = RLock()
 
     def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
         ch.basic_ack(method.delivery_tag)

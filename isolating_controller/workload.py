@@ -31,7 +31,8 @@ class Workload:
         self._perf_interval = perf_interval
 
         self._proc_info = psutil.Process(pid)
-        self._socket_id = None
+        self._socket_id: int = None
+        self._ipc_diff: float = None
 
     def __repr__(self) -> str:
         return f'{self._name} (pid: {self._pid})'
@@ -72,6 +73,10 @@ class Workload:
     @property
     def is_running(self) -> bool:
         return self._proc_info.is_running()
+
+    @property
+    def ipc_diff(self) -> float:
+        return self._ipc_diff
 
     def calc_metric_diff(self) -> MetricDiff:
         solorun_data = data_map[self.name]
