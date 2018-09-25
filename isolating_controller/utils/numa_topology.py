@@ -1,52 +1,58 @@
 # coding: UTF-8
 
 from pathlib import Path
-from typing import Dict, Set, Tuple
+from typing import Dict, Set
 
 from .hyphen import convert_to_set
 
+_BASE_PATH: Path = Path('/sys/devices/system/node')
 
-class NumaTopology:
-    BASE_PATH: Path = Path('/sys/devices/system/node')
 
-    @staticmethod
-    def get_node_topo() -> Set[int]:
-        online_path: Path = NumaTopology.BASE_PATH / 'online'
+def get_mem_topo() -> Set[int]:
+    has_memory_path = _BASE_PATH / 'has_memory'
 
-        with open(online_path, "r") as fp:
-            line: str = fp.readline()
-            node_list = convert_to_set(line)
+    with has_memory_path.open() as fp:
+        line: str = fp.readline()
+        mem_topo = convert_to_set(line)
 
-        return node_list
+        # TODO: get_mem_topo can be enhanced by using real numa memory access latency
 
-    @staticmethod
-    def get_cpu_topo(node_list: Set[int]) -> Dict[int, Set[int]]:
-        cpu_topo: Dict[int, Set[int]] = dict()
+    return mem_topo
 
-        for num in node_list:
-            cpulist_path: Path = NumaTopology.BASE_PATH / f'node{num}/cpulist'
 
-            with open(cpulist_path, "r") as fp:
-                line: str = fp.readline()
-                cpu_topo[num] = convert_to_set(line)
+def cur_online_nodes() -> Set[int]:
+    online_path: Path = _BASE_PATH / 'online'
 
-        return cpu_topo
+    with online_path.open() as fp:
+        line: str = fp.readline()
+        node_list = convert_to_set(line)
 
-    @staticmethod
-    def get_mem_topo() -> Set[int]:
-        has_memory_path = NumaTopology.BASE_PATH / 'has_memory'
+    return node_list
 
-        with open(has_memory_path, "r") as fp:
-            line: str = fp.readline()
-            mem_topo = convert_to_set(line)
 
-            # TODO: get_mem_topo can be enhanced by using real numa memory access latency
+def core_belongs_to(socket_id: int) -> Set[int]:
+    cpulist_path: Path = _BASE_PATH / f'node{socket_id}/cpulist'
 
-        return mem_topo
+    with cpulist_path.open() as fp:
+        line: str = fp.readline()
+        return convert_to_set(line)
 
-    @staticmethod
-    def get_numa_info() -> Tuple[Dict[int, Set[int]], Set[int]]:
-        node_list = NumaTopology.get_node_topo()
-        cpu_topo = NumaTopology.get_cpu_topo(node_list)
-        mem_topo = NumaTopology.get_mem_topo()
-        return cpu_topo, mem_topo
+
+def _node_to_core() -> Dict[int, Set[int]]:
+    node_list = cur_online_nodes()
+    return dict((socket_id, core_belongs_to(socket_id) for socket_id in node_list))
+
+
+def _core_to_node() -> Dict[int, int]:
+    ret_dict: Dict[int, int] = dict()
+    node_list = cur_online_nodes()
+
+    for socket_id in node_list:
+        for core_id in core_belongs_to(socket_id):
+            ret_dict[core_id] = socket_id
+
+    return ret_dict
+
+
+node_to_core: Dict[int, Set[int]] = _node_to_core()  # key: socket id, value: corresponding core ids
+core_to_node: Dict[int, int] = _core_to_node()  # key: core id, value: corresponding socket id

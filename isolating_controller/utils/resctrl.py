@@ -1,12 +1,7 @@
 # coding: UTF-8
 
 import subprocess
-import asyncio
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
-
-#import aiofiles
-#from aiofiles.base import AiofilesContextManager
 
 
 def len_of_mask(mask: str) -> int:
@@ -32,7 +27,7 @@ class ResCtrl:
 
     def __init__(self, group_name: str) -> None:
         self._group_name: str = group_name
-        self._group_path: Path = ResCtrl.MOUNT_POINT/f'{group_name}'
+        self._group_path: Path = ResCtrl.MOUNT_POINT / f'{group_name}'
 
     @property
     def group_name(self):
@@ -45,7 +40,7 @@ class ResCtrl:
 
     def add_task(self, pid: int) -> None:
         subprocess.run(args=('sudo', 'tee', str(self._group_path / 'tasks')),
-                                    input=f'{pid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
+                       input=f'{pid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
 
     def assign_llc(self, *masks: str) -> None:
         masks = (f'{i}={mask}' for i, mask in enumerate(masks))

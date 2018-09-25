@@ -4,8 +4,8 @@ import logging
 from typing import Optional
 
 from .base_isolator import Isolator
-from .. import NextStep, ResourceType
-from ...utils import ResCtrl
+from .. import NextStep
+from ...utils import ResCtrl, numa_topology
 from ...workload import Workload
 
 
@@ -13,33 +13,14 @@ class CacheIsolator(Isolator):
     _DOD_THRESHOLD = 0.005
     _FORCE_THRESHOLD = 0.1
 
-    def __init__(self, foreground_wl: Workload, background_wl: Workload, cont_resource: Optional[ResourceType]) -> None:
-        super().__init__(foreground_wl, background_wl, cont_resource)
+    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
+        super().__init__(foreground_wl, background_wl)
 
         self._prev_step: Optional[int] = None
         self._cur_step: Optional[int] = None
 
-        self._fg_grp_name = f'{foreground_wl.name}_{foreground_wl.pid}'
-        self._bg_grp_name = f'{background_wl.name}_{background_wl.pid}'
-
-        self._fg_resctrl = ResCtrl(self._fg_grp_name)
-        self._bg_resctrl = ResCtrl(self._bg_grp_name)
-
-    def __del__(self) -> None:
-        logger = logging.getLogger(__name__)
-
-        max_bits = ResCtrl.MAX_BITS
-        max_mask = ResCtrl.gen_mask(0, max_bits)
-
-        if self._foreground_wl.is_running:
-            logger.debug(f'reset resctrl configuration of {self._foreground_wl}')
-            # FIXME: The number of socket is two at most
-            ResCtrl.assign_llc(self._fg_resctrl, max_mask, max_mask)
-
-        if self._background_wl.is_running:
-            logger.debug(f'reset resctrl configuration of {self._background_wl}')
-            # FIXME: The number of socket is two at most
-            ResCtrl.assign_llc(self._bg_resctrl, max_mask, max_mask)
+        self._fg_resctrl = ResCtrl(f'{foreground_wl.name}_{foreground_wl.pid}')
+        self._bg_resctrl = ResCtrl(f'{background_wl.name}_{background_wl.pid}')
 
     def strengthen(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
@@ -75,40 +56,22 @@ class CacheIsolator(Isolator):
     def _enforce(self) -> None:
         logger = logging.getLogger(__name__)
 
-        bg_socket_id = self._background_wl.socket_id
-        fg_socket_id = self._foreground_wl.socket_id
-
         if self._cur_step is None:
             logger.info('CAT off')
-
-            # FIXME: The number of socket is two at most
-            mask = ResCtrl.gen_mask(0, ResCtrl.MAX_BITS)
-            if bg_socket_id == 0:
-                ResCtrl.assign_llc(self._bg_resctrl, mask, '1')
-            if bg_socket_id == 1:
-                ResCtrl.assign_llc(self._bg_resctrl, '1', mask)
-            if fg_socket_id == 0:
-                ResCtrl.assign_llc(self._fg_resctrl, mask, '1')
-            if fg_socket_id == 1:
-                ResCtrl.assign_llc(self._fg_resctrl, '1', mask)
+            self.reset()
 
         else:
             logger.info(f'foreground : background = {self._cur_step} : {ResCtrl.MAX_BITS - self._cur_step}')
 
-            # FIXME: The number of socket is two at most
-            fg_mask = ResCtrl.gen_mask(0, self._cur_step)
-            if fg_socket_id == 0:
-                ResCtrl.assign_llc(self._fg_resctrl, fg_mask, '1')
-            if fg_socket_id == 1:
-                ResCtrl.assign_llc(self._fg_resctrl, '1', fg_mask)
+            # FIXME: hard coded -> The number of socket is two at most
+            masks = [ResCtrl.MIN_MASK, ResCtrl.MIN_MASK]
+            masks[self._foreground_wl.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
+            self._fg_resctrl.assign_llc(*masks)
 
-            # FIXME: The number of socket is two at most
-            bg_mask = ResCtrl.gen_mask(self._cur_step)
-            if bg_socket_id == 0:
-                ResCtrl.assign_llc(self._bg_resctrl, bg_mask, '1')
-            if bg_socket_id == 1:
-                ResCtrl.assign_llc(self._bg_resctrl, '1', bg_mask)
-
+            # FIXME: hard coded -> The number of socket is two at most
+            masks = [ResCtrl.MIN_MASK, ResCtrl.MIN_MASK]
+            masks[self._background_wl.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
+            self._bg_resctrl.assign_llc(*masks)
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
@@ -159,3 +122,15 @@ class CacheIsolator(Isolator):
                 return NextStep.STOP
             else:
                 return NextStep.STRENGTHEN
+
+    def reset(self) -> None:
+        masks = [ResCtrl.MIN_MASK] * (max(numa_topology.cur_online_nodes()) + 1)
+
+        if self._background_wl.is_running:
+            bg_masks = masks.copy()
+            bg_masks[self._background_wl.cur_socket_id()] = ResCtrl.MAX_MASK
+            ResCtrl.assign_llc(self._bg_resctrl, *bg_masks)
+
+        if self._foreground_wl.is_running:
+            masks[self._foreground_wl.cur_socket_id()] = ResCtrl.MAX_MASK
+            ResCtrl.assign_llc(self._fg_resctrl, *masks)

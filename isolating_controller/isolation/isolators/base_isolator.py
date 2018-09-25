@@ -1,7 +1,6 @@
 # coding: UTF-8
 
 from abc import ABCMeta, abstractmethod
-
 from typing import Optional
 
 from .. import NextStep, ResourceType
@@ -20,7 +19,11 @@ class Isolator(metaclass=ABCMeta):
         self._bg_next_step = NextStep.IDLE
 
         self._is_first_decision: bool = True
+        # FIXME: is it necessary?
         self._contentious_resource: Optional[ResourceType] = cont_resource
+
+    def __del__(self):
+        self.reset()
 
     @abstractmethod
     def strengthen(self) -> 'Isolator':
@@ -86,3 +89,8 @@ class Isolator(metaclass=ABCMeta):
 
         else:
             return self._monitoring_result()
+
+    @abstractmethod
+    def reset(self) -> None:
+        """Restore to initial configuration"""
+        pass

@@ -1,13 +1,13 @@
 # coding: UTF-8
 
 import logging
-
 from typing import Dict, Set
 
 from .base_isolator import Isolator
 from .. import NextStep
-from ...workload import Workload
 from ..policies import IsolationPolicy
+from ...workload import Workload
+
 
 
 class SwapIsolator(Isolator):
@@ -15,7 +15,7 @@ class SwapIsolator(Isolator):
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload,
                  isolation_groups: Dict[IsolationPolicy, int]) -> None:
-        super().__init__(foreground_wl, background_wl, None)
+        super().__init__(foreground_wl, background_wl)
 
         self._all_groups = isolation_groups
         self._swap_candidates: Set[Workload] = None
@@ -29,7 +29,6 @@ class SwapIsolator(Isolator):
 
         if self._background_wl.is_running:
             logger.debug(f'reset swap configuration of {self._background_wl}')
-
 
     def strengthen(self) -> 'SwapIsolator':
         """
@@ -50,8 +49,7 @@ class SwapIsolator(Isolator):
         :return:
         """
         # FIXME: hard coded
-        return self._swap_candidates == None
-
+        return self._swap_candidates is None
 
     @property
     def is_min_level(self) -> bool:
@@ -61,8 +59,7 @@ class SwapIsolator(Isolator):
         :return:
         """
         # FIXME: hard coded
-        return self._swap_candidates == None
-
+        return self._swap_candidates is None
 
     def weaken(self) -> 'SwapIsolator':
         """
@@ -80,10 +77,10 @@ class SwapIsolator(Isolator):
         """
         pass
 
-#    def enforce(self) -> None:
-#        self._prev_metric_diff: MetricDiff = self._foreground_wl.calc_metric_diff()
-#
-#        self._enforce()
+    #    def enforce(self) -> None:
+    #        self._prev_metric_diff: MetricDiff = self._foreground_wl.calc_metric_diff()
+    #
+    #        self._enforce()
 
     def _first_decision(self) -> NextStep:
         """
@@ -97,4 +94,7 @@ class SwapIsolator(Isolator):
         If the effect of swapping is getting worse, then rollback??
         :return:
         """
+        pass
+
+    def reset(self) -> None:
         pass

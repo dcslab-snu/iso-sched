@@ -1,15 +1,16 @@
 # coding: UTF-8
 
 
-import subprocess
 import getpass
 import grp
 import os
+import subprocess
+from typing import Iterable, Optional, Set
 
-from typing import Iterable, Set, Optional
 from .hyphen import convert_to_set
 
 
+# TODO: delete
 class Cgroup:
     CPUSET_MOUNT_POINT = '/sys/fs/cgroup/cpuset'
     CPU_MOUNT_POINT = '/sys/fs/cgroup/cpu'
@@ -25,10 +26,10 @@ class Cgroup:
         gname: str = grp.getgrgid(gid).gr_name
 
         subprocess.check_call(args=(
-                'sudo', 'cgcreate', '-a', f'{uname}:{gname}', '-d', '700', '-f',
-                '600', '-t', f'{uname}:{gname}', '-s', '600', '-g', self._group_path))
+            'sudo', 'cgcreate', '-a', f'{uname}:{gname}', '-d', '700', '-f',
+            '600', '-t', f'{uname}:{gname}', '-s', '600', '-g', self._group_path))
 
-    def assign_cpus(self, core_set: Set[int]) -> None:
+    def assign_cpus(self, core_set: Iterable[int]) -> None:
         core_ids = ','.join(map(str, core_set))
         subprocess.check_call(args=('cgset', '-r', f'cpuset.cpus={core_ids}', self._group_name))
 
@@ -42,14 +43,14 @@ class Cgroup:
             core_set: Set[int] = convert_to_set(line)
         return core_set
 
-    def limit_cpu_quota(self, limit_percentage: float, period: Optional[int]=None) -> None:
+    def limit_cpu_quota(self, limit_percentage: float, period: Optional[int] = None) -> None:
         if period is None:
             with open(f'{Cgroup.CPU_MOUNT_POINT}/cpu.cfs_period_us', "r") as fp:
                 line: str = fp.readline()
                 period = int(line)
 
         cpu_cores = self._get_cpu_affinity_from_group()
-        quota = int(period * limit_percentage/100 * len(cpu_cores))
+        quota = int(period * limit_percentage / 100 * len(cpu_cores))
         subprocess.check_call(args=('cgset', '-r', f'cpu.cfs_quota_us={quota}', self._group_name))
 
         subprocess.check_call(args=('cgset', '-r', f'cpu.cfs_period_us={period}', self._group_name))

@@ -14,10 +14,9 @@ class IsolationPolicy(metaclass=ABCMeta):
     # FIXME : _CPU_THRESHOLD needs test
     _CPU_THRESHOLD = 0.1
 
-    def __init__(self, fg_wl: Workload, bg_wl: Workload, skt_id: int) -> None:
+    def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         self._fg_wl = fg_wl
         self._bg_wl = bg_wl
-        self._skt_id = skt_id
 
         self._isolator_map: Mapping[Type[Isolator], Isolator] = dict()
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR

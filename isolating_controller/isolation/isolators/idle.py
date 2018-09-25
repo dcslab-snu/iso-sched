@@ -37,3 +37,6 @@ class IdleIsolator(Isolator):
         self._fg_next_step = NextStep.IDLE
         self._bg_next_step = NextStep.IDLE
         return NextStep.IDLE
+
+    def reset(self) -> None:
+        pass

@@ -4,13 +4,13 @@ import logging
 
 from .. import ResourceType
 from .base_policy import IsolationPolicy
-from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, CoreIsolator
+from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
 from ...workload import Workload
 
 
 class DiffCPUPolicy(IsolationPolicy):
-    def __init__(self, fg_wl: Workload, bg_wl: Workload, skt_id: int) -> None:
-        super().__init__(fg_wl, bg_wl, skt_id)
+    def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
+        super().__init__(fg_wl, bg_wl)
 
         self._is_llc_isolated = False
         self._is_mem_isolated = False

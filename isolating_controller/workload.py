@@ -2,15 +2,14 @@
 
 from collections import deque
 from itertools import chain
-from typing import Deque, Tuple, Set
+from typing import Deque, Tuple
 
 import cpuinfo
 import psutil
 
-from .utils.numa_topology import NumaTopology
 from .metric_container.basic_metric import BasicMetric, MetricDiff
 from .solorun_data.datas import data_map
-
+from .utils import numa_topology
 
 L3_SIZE = int(cpuinfo.get_cpu_info()['l3_cache_size'].split()[0]) * 1024
 
@@ -31,10 +30,12 @@ class Workload:
         self._perf_interval = perf_interval
 
         self._proc_info = psutil.Process(pid)
-        self._socket_id = None
 
     def __repr__(self) -> str:
         return f'{self._name} (pid: {self._pid})'
+
+    def __hash__(self) -> int:
+        return self._pid
 
     @property
     def name(self) -> str:
@@ -51,11 +52,6 @@ class Workload:
     @property
     def metrics(self) -> Deque[BasicMetric]:
         return self._metrics
-
-    @property
-    def socket_id(self) -> int:
-        self._socket_id = self.get_socket_id()
-        return self._socket_id
 
     @property
     def cpuset(self) -> Tuple[int, ...]:
@@ -87,16 +83,12 @@ class Workload:
             ))
         except psutil.NoSuchProcess:
             return tuple()
-        
-    def get_socket_id(self) -> int:
-        cpuset: Set[int] = self.cpuset
-        cpu_topo, _ = NumaTopology.get_numa_info()
 
-        # FIXME: Hardcode for assumption (one workload to one socket)
-        for socket_id, skt_cpus in cpu_topo.items():
-            #print(f'cpuset: {cpuset}, socket_id: {socket_id}, skt_cpus: {skt_cpus}')
-            for cpu_id in cpuset:
-                if cpu_id in skt_cpus:
-                    ret = socket_id
-                    self._socket_id = ret
-                    return ret
+    def cur_socket_id(self) -> int:
+        sockets = frozenset(numa_topology.core_to_node[core_id] for core_id in self.cpuset)
+
+        # FIXME: hard coded
+        if len(sockets) is not 1:
+            raise NotImplementedError('Workload spans multiple sockets.')
+        else:
+            return next(iter(sockets))
