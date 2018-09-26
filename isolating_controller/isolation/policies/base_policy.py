@@ -128,12 +128,35 @@ class IsolationPolicy(metaclass=ABCMeta):
         else:
             return bg_wl
 
+    @property
+    def least_mem_bw_workload(self) -> Workload:
+        fg_wl = self.foreground_workload
+        bg_wl = self.background_workload
+
+        fg_mem_bw = fg_wl.metrics[0].local_mem_ps()
+        bg_mem_bw = bg_wl.metrics[0].local_mem_ps()
+
+        if fg_mem_bw > bg_mem_bw:
+            return bg_wl
+        else:
+            return fg_wl
+
     def update_aggr_ipc(self) -> None:
         fg_diff = self._fg_wl.calc_metric_diff()
         bg_diff = self._bg_wl.calc_metric_diff()
         self._fg_wl._ipc_diff = fg_diff.ipc
         self._bg_wl._ipc_diff = bg_diff.ipc
         self._aggr_ipc_diff = fg_diff.ipc + bg_diff.ipc
+
+    def contention_diff(self, rtype: ResourceType) -> float:
+        fg_diff = self._fg_wl.calc_metric_diff()
+        bg_diff = self._bg_wl.calc_metric_diff()
+        if rtype is ResourceType.CPU:
+            return fg_diff.ipc + bg_diff.ipc
+        elif rtype is ResourceType.CACHE:
+            return fg_diff.l3_hit_ratio + bg_diff.l3_hit_ratio
+        elif rtype is ResourceType.MEMORY:
+            return fg_diff.local_mem_util_ps + bg_diff.local_mem_util_ps
 
     def set_idle_isolator(self) -> None:
         self._cur_isolator.yield_isolation()
