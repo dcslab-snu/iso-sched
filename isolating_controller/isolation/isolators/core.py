@@ -33,7 +33,7 @@ class CoreIsolator(Isolator):
         self._fg_cgroup = Cgroup(self._fg_grp_name, 'cpuset,cpu')
         self._bg_cgroup = Cgroup(self._bg_grp_name, 'cpuset,cpu')
         self._fg_dvfs = self._foreground_wl.dvfs
-        self._bg_dvfs = self._bakcground_wl.dvfs
+        self._bg_dvfs = self._background_wl.dvfs
 
         foreground_wl._cgroup = self._fg_cgroup
         background_wl._cgroup = self._bg_cgroup
