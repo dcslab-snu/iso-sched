@@ -74,6 +74,10 @@ class Workload:
     def ipc_diff(self) -> float:
         return self._ipc_diff
 
+    @property
+    def group_name(self) -> str:
+        return f'{self.name}_{self.pid}'
+
     def calc_metric_diff(self) -> MetricDiff:
         solorun_data = data_map[self.name]
         curr_metric: BasicMetric = self._metrics[0]
