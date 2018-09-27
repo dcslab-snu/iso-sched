@@ -7,6 +7,9 @@ from typing import Deque, Tuple, Set
 import cpuinfo
 import psutil
 
+from .utils.dvfs import DVFS
+from .utils.cgroup import Cgroup
+from .utils.resctrl import ResCtrl
 from .utils.numa_topology import NumaTopology
 from .metric_container.basic_metric import BasicMetric, MetricDiff
 from .solorun_data.datas import data_map
@@ -33,6 +36,9 @@ class Workload:
         self._proc_info = psutil.Process(pid)
         self._socket_id: int = None
         self._ipc_diff: float = None
+        self._cgroup: Cgroup = None
+        self._resctrl: ResCtrl = None
+        self._dvfs: DVFS = None
 
     def __repr__(self) -> str:
         return f'{self._name} (pid: {self._pid})'
@@ -77,6 +83,18 @@ class Workload:
     @property
     def ipc_diff(self) -> float:
         return self._ipc_diff
+
+    @property
+    def cgroup(self) -> Cgroup:
+        return self._cgroup
+
+    @property
+    def resctrl(self) -> ResCtrl:
+        return self._resctrl
+
+    @property
+    def dvfs(self) -> DVFS:
+        return self._dvfs
 
     def calc_metric_diff(self) -> MetricDiff:
         solorun_data = data_map[self.name]

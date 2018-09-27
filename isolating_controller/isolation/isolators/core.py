@@ -32,6 +32,11 @@ class CoreIsolator(Isolator):
 
         self._fg_cgroup = Cgroup(self._fg_grp_name, 'cpuset,cpu')
         self._bg_cgroup = Cgroup(self._bg_grp_name, 'cpuset,cpu')
+        self._fg_dvfs = self._foreground_wl.dvfs
+        self._bg_dvfs = self._bakcground_wl.dvfs
+
+        foreground_wl._cgroup = self._fg_cgroup
+        background_wl._cgroup = self._bg_cgroup
 
         cpu_topo, mem_topo = NumaTopology.get_numa_info()
         self._cpu_topo: Dict[int, Set[int]] = cpu_topo
@@ -135,6 +140,10 @@ class CoreIsolator(Isolator):
 
         self._bg_cgroup.assign_cpus(set(self._bg_cpuset))
         self._fg_cgroup.assign_cpus(set(self._fg_cpuset))
+
+        # Setting the current workloads' cpu frequencies to newly changed cpuset
+        self._bg_dvfs.set_freq_cgroup(self._bg_dvfs.cpufreq)
+        self._fg_dvfs.set_freq_cgroup(self._fg_dvfs.cpufreq)
 
     def _first_decision(self) -> NextStep:
         curr_diff = None

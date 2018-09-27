@@ -3,7 +3,7 @@
 import logging
 from itertools import chain
 
-from typing import Optional
+from typing import Optional, Dict, Set
 
 from .base_isolator import Isolator
 from .. import NextStep, ResourceType
@@ -18,13 +18,23 @@ class MemoryIsolator(Isolator):
     def __init__(self, foreground_wl: Workload, background_wl: Workload, cont_resource: Optional[ResourceType]) -> None:
         super().__init__(foreground_wl, background_wl, cont_resource)
 
+        self._fg_grp_name: str = f'{foreground_wl.name}_{foreground_wl.pid}'
+        self._bg_grp_name: str = f'{background_wl.name}_{background_wl.pid}'
+
+        self._fg_affinity = foreground_wl.cpuset
         self._bg_affinity = background_wl.cpuset
 
         # FIXME: hard coded
         self._cur_step = DVFS.MAX
 
+        self._fg_dvfs: DVFS = DVFS(self._fg_grp_name, self._fg_affinity)
+        self._bg_dvfs: DVFS = DVFS(self._bg_grp_name, self._bg_affinity)
+
     def __del__(self) -> None:
-        DVFS.set_freq(DVFS.MAX, chain(self._bg_affinity))
+        if self._background_wl.is_running:
+            DVFS.set_freq(DVFS.MAX, chain(self._bg_affinity))
+        if self._foreground_wl.is_running:
+            DVFS.set_freq(DVFS.MAX, chain(self._fg_affinity))
 
     def strengthen(self) -> 'MemoryIsolator':
         self._cur_step -= DVFS.STEP
@@ -49,6 +59,7 @@ class MemoryIsolator(Isolator):
         logger.info(f'frequency of cpuset {self._background_wl.cpuset} is {self._cur_step / 1_000_000}GHz')
 
         DVFS.set_freq(self._cur_step, self._background_wl.cpuset)
+        self._bg_dvfs.save_freq(self._cur_step)
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
