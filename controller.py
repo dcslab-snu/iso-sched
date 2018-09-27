@@ -24,6 +24,7 @@ from isolating_controller.isolation.policies import DiffCPUPolicy, DiffPolicy, I
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 from pending_queue import PendingQueue
+from swap_iso import SwapIsolator
 
 MIN_PYTHON = (3, 6)
 
@@ -139,11 +140,14 @@ class ControlThread(Thread):
 
         self._interval: float = 0.2  # Scheduling interval
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
+        self._all_groups: Dict[int, IsolationPolicy] = dict()
+        self._swapper: SwapIsolator = None
 
     def _isolate_workloads(self) -> None:
         logger = logging.getLogger(__name__)
 
         # TODO: Swapper may come here
+        self._swapper.try_swap()
 
         for group, iteration_num in self._isolation_groups.items():
             logger.info('')
@@ -192,6 +196,12 @@ class ControlThread(Thread):
             self._isolation_groups[pending_group] = 0
             pending_group.init_isolators()
 
+        # init self._all_groups if pending_group exist
+        if len(self._isolation_groups) > 0:
+            all_groups = list(self._isolation_groups.keys())
+            for idx, group in enumerate(all_groups):
+                self._all_groups[idx] = group
+
     def _remove_ended_groups(self) -> None:
         """
         deletes the finished workloads(threads) from the dict.
@@ -214,6 +224,8 @@ class ControlThread(Thread):
         logger = logging.getLogger(__name__)
         logger.info('starting isolation loop')
 
+        # Swapper init
+        self._swapper = SwapIsolator(self._all_groups)
         while True:
             self._remove_ended_groups()
             self._register_pending_workloads()

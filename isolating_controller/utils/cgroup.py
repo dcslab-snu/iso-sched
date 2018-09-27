@@ -60,3 +60,9 @@ class Cgroup:
 
     def delete(self) -> None:
         subprocess.check_call(args=('sudo', 'cgdelete', '-r', '-g', self._group_path))
+
+    def enable_memory_migrate(self) -> None:
+        subprocess.check_call(args=('cgset', '-r', f'cpuset.memory_migrate=1', self._group_name))
+
+    def disable_memory_migrate(self) -> None:
+        subprocess.check_call(args=('cgset', '-r', f'cpuset.memory_migrate=0', self._group_name))

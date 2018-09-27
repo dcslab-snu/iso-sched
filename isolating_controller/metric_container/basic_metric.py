@@ -73,7 +73,7 @@ class BasicMetric:
         return self._req_date
 
     @property
-    def ipc(self) -> float:
+    def ipc(self):
         return self._instructions / self._cycles
 
     @property
@@ -123,7 +123,7 @@ class MetricDiff:
         self._l3_hit_ratio = curr.l3hit_ratio - prev.l3hit_ratio
         self._local_mem_ps = curr.local_mem_ps() / prev.local_mem_ps() - 1
         self._remote_mem_ps = curr.remote_mem_ps() / prev.remote_mem_ps() - 1
-        self._ipc = curr.ipc - prev.ipc
+        self._ipc = curr.ipc() / prev.ipc() - 1
 
     @property
     def l3_hit_ratio(self):
