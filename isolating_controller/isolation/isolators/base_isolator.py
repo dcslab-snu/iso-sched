@@ -86,3 +86,12 @@ class Isolator(metaclass=ABCMeta):
 
         else:
             return self._monitoring_result()
+
+    @abstractmethod
+    def update_isolation_config(self) -> None:
+        """
+        Update the isolator configuration parameters to each workloads after enforcing isolation
+        (E.g., Update the core frequencies after enforcing isolation)
+        :return:
+        """
+        pass

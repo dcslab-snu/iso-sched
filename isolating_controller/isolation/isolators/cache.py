@@ -25,6 +25,10 @@ class CacheIsolator(Isolator):
         self._fg_resctrl = ResCtrl(self._fg_grp_name)
         self._bg_resctrl = ResCtrl(self._bg_grp_name)
 
+        # Save the CacheIsolator setting to `Workload`
+        foreground_wl._resctrl = self._fg_resctrl
+        background_wl._resctrl = self._bg_resctrl
+
     def __del__(self) -> None:
         logger = logging.getLogger(__name__)
 
@@ -109,6 +113,7 @@ class CacheIsolator(Isolator):
             if bg_socket_id == 1:
                 ResCtrl.assign_llc(self._bg_resctrl, '1', bg_mask)
 
+        self.update_isolation_config()
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
@@ -159,3 +164,7 @@ class CacheIsolator(Isolator):
                 return NextStep.STOP
             else:
                 return NextStep.STRENGTHEN
+
+    def update_isolation_config(self) -> None:
+        self._foreground_wl._resctrl = self._fg_resctrl
+        self._background_wl._resctrl = self._bg_resctrl

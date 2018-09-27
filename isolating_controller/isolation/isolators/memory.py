@@ -30,6 +30,10 @@ class MemoryIsolator(Isolator):
         self._fg_dvfs: DVFS = DVFS(self._fg_grp_name, self._fg_affinity)
         self._bg_dvfs: DVFS = DVFS(self._bg_grp_name, self._bg_affinity)
 
+        # Save the MemoryIsolator setting to `Workload`
+        foreground_wl._dvfs = self._fg_dvfs
+        background_wl._dvfs = self._bg_dvfs
+
     def __del__(self) -> None:
         if self._background_wl.is_running:
             DVFS.set_freq(DVFS.MAX, chain(self._bg_affinity))
@@ -60,6 +64,7 @@ class MemoryIsolator(Isolator):
 
         DVFS.set_freq(self._cur_step, self._background_wl.cpuset)
         self._bg_dvfs.save_freq(self._cur_step)
+        self.update_isolation_config()
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
@@ -108,3 +113,7 @@ class MemoryIsolator(Isolator):
                 return NextStep.STOP
             else:
                 return NextStep.STRENGTHEN
+
+    def update_isolation_config(self) -> None:
+        self._foreground_wl._dvfs = self._fg_dvfs
+        self._background_wl._dvfs = self._bg_dvfs

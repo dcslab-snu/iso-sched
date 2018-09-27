@@ -35,6 +35,7 @@ class CoreIsolator(Isolator):
         self._fg_dvfs = self._foreground_wl.dvfs
         self._bg_dvfs = self._background_wl.dvfs
 
+        # Save the CoreIsolator setting to `Workload`
         foreground_wl._cgroup = self._fg_cgroup
         background_wl._cgroup = self._bg_cgroup
 
@@ -144,6 +145,8 @@ class CoreIsolator(Isolator):
         # Setting the current workloads' cpu frequencies to newly changed cpuset
         self._bg_dvfs.set_freq_cgroup(self._bg_dvfs.cpufreq)
         self._fg_dvfs.set_freq_cgroup(self._fg_dvfs.cpufreq)
+
+        self.update_isolation_config()
 
     def _first_decision(self) -> NextStep:
         curr_diff = None
@@ -263,3 +266,7 @@ class CoreIsolator(Isolator):
                 return True
         else:
             return False
+
+    def update_isolation_config(self) -> None:
+        self._foreground_wl._cgroup = self._fg_cgroup
+        self._background_wl._cgroup = self._bg_cgroup
