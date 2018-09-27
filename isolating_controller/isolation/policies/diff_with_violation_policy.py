@@ -2,9 +2,9 @@
 
 import logging
 
-from .. import ResourceType
 from .diff_policy import DiffPolicy
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
+from .. import ResourceType
+from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
@@ -22,7 +22,7 @@ class DiffWViolationPolicy(DiffPolicy):
         return \
             resource is ResourceType.CACHE and not isinstance(self._cur_isolator, CacheIsolator) \
             or resource is ResourceType.MEMORY and (not isinstance(self._cur_isolator, MemoryIsolator)
-                                                    and not isinstance(self._cur_isolator, CoreIsolator))
+                                                    and not isinstance(self._cur_isolator, SchedIsolator))
 
     @property
     def new_isolator_needed(self) -> bool:

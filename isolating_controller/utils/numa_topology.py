@@ -40,7 +40,7 @@ def core_belongs_to(socket_id: int) -> Set[int]:
 
 def _node_to_core() -> Dict[int, Set[int]]:
     node_list = cur_online_nodes()
-    return dict((socket_id, core_belongs_to(socket_id) for socket_id in node_list))
+    return dict((socket_id, core_belongs_to(socket_id)) for socket_id in node_list)
 
 
 def _core_to_node() -> Dict[int, int]:

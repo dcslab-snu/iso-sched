@@ -1,15 +1,14 @@
 # coding: UTF-8
 
 from abc import ABCMeta, abstractmethod
-from typing import Optional
 
-from .. import NextStep, ResourceType
+from .. import NextStep
 from ...metric_container.basic_metric import MetricDiff
 from ...workload import Workload
 
 
 class Isolator(metaclass=ABCMeta):
-    def __init__(self, foreground_wl: Workload, background_wl: Workload, cont_resource: Optional[ResourceType]) -> None:
+    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         self._prev_metric_diff: MetricDiff = foreground_wl.calc_metric_diff()
 
         self._foreground_wl = foreground_wl
@@ -19,8 +18,6 @@ class Isolator(metaclass=ABCMeta):
         self._bg_next_step = NextStep.IDLE
 
         self._is_first_decision: bool = True
-        # FIXME: is it necessary?
-        self._contentious_resource: Optional[ResourceType] = cont_resource
 
     def __del__(self):
         self.reset()

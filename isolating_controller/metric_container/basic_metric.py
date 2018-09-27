@@ -35,6 +35,10 @@ class BasicMetric:
         return self._instructions
 
     @property
+    def instruction_ps(self):
+        return self._instructions * (1000 / self._interval)
+
+    @property
     def cycles(self):
         return self._cycles
 
@@ -73,23 +77,23 @@ class BasicMetric:
         return self._req_date
 
     @property
-    def ipc(self):
+    def ipc(self) -> float:
         return self._instructions / self._cycles
 
     @property
-    def intra_coh_ratio(self):
+    def intra_coh_ratio(self) -> float:
         return self._intra_coh / self._l2miss
 
     @property
-    def inter_coh_ratio(self):
+    def inter_coh_ratio(self) -> float:
         return self._inter_coh / self._l2miss
 
     @property
-    def coh_ratio(self):
+    def coh_ratio(self) -> float:
         return (self._inter_coh + self._intra_coh) / self._l2miss
 
     @property
-    def l3miss_ratio(self):
+    def l3miss_ratio(self) -> float:
         return self._l3miss / self._l2miss
 
     @property
@@ -98,24 +102,21 @@ class BasicMetric:
 
     @property
     def llc_util(self) -> float:
-        return self._llc_size/LLC_SIZE
+        return self._llc_size / LLC_SIZE
 
     @property
-    def l3_intensity(self):
+    def l3_intensity(self) -> float:
         l3_hit_ratio = 1 - self.l3miss_ratio
         return self.llc_util * l3_hit_ratio
 
     @property
-    def mem_intensity(self):
+    def mem_intensity(self) -> float:
         return self.llc_util * self.l3miss_ratio
 
-    def __str__(self):
+    def __repr__(self) -> str:
         return ', '.join(map(str, (
             self._l2miss, self._l3miss, self._instructions, self._cycles, self._stall_cycles,
             self._intra_coh, self._inter_coh, self._llc_size, self._req_date)))
-
-    def __repr__(self):
-        return self.__str__()
 
 
 class MetricDiff:
@@ -123,25 +124,25 @@ class MetricDiff:
         self._l3_hit_ratio = curr.l3hit_ratio - prev.l3hit_ratio
         self._local_mem_ps = curr.local_mem_ps() / prev.local_mem_ps() - 1
         self._remote_mem_ps = curr.remote_mem_ps() / prev.remote_mem_ps() - 1
-        self._ipc = curr.ipc() / prev.ipc() - 1
+        self._instruction_ps = curr.instruction_ps / prev.instruction_ps - 1
 
     @property
-    def l3_hit_ratio(self):
+    def l3_hit_ratio(self) -> float:
         return self._l3_hit_ratio
 
     @property
-    def local_mem_util_ps(self):
+    def local_mem_util_ps(self) -> float:
         return self._local_mem_ps
 
     @property
-    def remote_mem_ps(self):
+    def remote_mem_ps(self) -> float:
         return self._remote_mem_ps
 
     @property
-    def ipc(self):
-        return self._ipc
+    def instruction_ps(self) -> float:
+        return self._instruction_ps
 
     def __repr__(self) -> str:
         return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, ' \
                f'Local Memory access diff: {self._local_mem_ps:>6.03f}, ' \
-               f'IPC diff: {self.ipc:>6.03f}'
+               f'instruction diff: {self._instruction_ps:>6.03f}'

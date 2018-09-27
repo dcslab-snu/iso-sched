@@ -1,7 +1,7 @@
 # coding: UTF-8
 
 import logging
-from typing import Tuple
+from typing import Optional, Tuple
 
 from .base_isolator import Isolator
 from .. import NextStep, ResourceType
@@ -14,22 +14,19 @@ class CoreIsolator(Isolator):
     _DOD_THRESHOLD = 0.005
     _FORCE_THRESHOLD = 0.1
 
-    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        super().__init__(foreground_wl, background_wl)
+    def __init__(self, foreground_wl: Workload, background_wl: Workload, cont_resource: Optional[ResourceType]) -> None:
+        super().__init__(foreground_wl, background_wl, cont_resource)
 
         self._fg_cpuset: Tuple[int, ...] = foreground_wl.cpuset
         self._bg_cpuset: Tuple[int, ...] = background_wl.cpuset
         self._cur_bg_step: int = min(self._bg_cpuset)
         self._cur_fg_step: int = max(self._fg_cpuset)
 
-        fg_grp_name: str = f'{foreground_wl.name}_{foreground_wl.pid}'
-        bg_grp_name: str = f'{background_wl.name}_{background_wl.pid}'
-
         self._prev_fg_affinity: Tuple[int, ...] = foreground_wl.cpuset
         self._prev_bg_affinity: Tuple[int, ...] = background_wl.cpuset
 
-        self._fg_cgroup = CpuSet(fg_grp_name)
-        self._bg_cgroup = CpuSet(bg_grp_name)
+        self._fg_cgroup = CpuSet(foreground_wl.group_name)
+        self._bg_cgroup = CpuSet(background_wl.group_name)
 
     def strengthen(self) -> 'CoreIsolator':
         """
@@ -131,14 +128,14 @@ class CoreIsolator(Isolator):
         if self._contentious_resource == ResourceType.MEMORY:
             curr_diff = metric_diff.local_mem_util_ps
         elif self._contentious_resource == ResourceType.CPU:
-            curr_diff = metric_diff.ipc
+            curr_diff = metric_diff.instruction_ps
 
         logger = logging.getLogger(__name__)
         logger.debug(f'current diff: {curr_diff:>7.4f}')
 
         # FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
-        fg_strengthen_cond = self.fg_strengthen_cond(metric_diff.ipc)
-        fg_weaken_cond = self.fg_weaken_cond(metric_diff.ipc)
+        fg_strengthen_cond = self.fg_strengthen_cond(metric_diff.instruction_ps)
+        fg_weaken_cond = self.fg_weaken_cond(metric_diff.instruction_ps)
         if curr_diff < 0:
             if self.is_max_level:
                 self._bg_next_step = NextStep.STOP
@@ -172,8 +169,8 @@ class CoreIsolator(Isolator):
             prev_diff = self._prev_metric_diff.local_mem_util_ps
             diff_of_diff = curr_diff - prev_diff
         elif self._contentious_resource == ResourceType.CPU:
-            curr_diff = metric_diff.ipc
-            prev_diff = self._prev_metric_diff.ipc
+            curr_diff = metric_diff.instruction_ps
+            prev_diff = self._prev_metric_diff.instruction_ps
             diff_of_diff = curr_diff - prev_diff
 
         logger = logging.getLogger(__name__)
@@ -181,11 +178,11 @@ class CoreIsolator(Isolator):
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
         # FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
-        fg_strengthen_cond = self.fg_strengthen_cond(metric_diff.ipc)
-        fg_weaken_cond = self.fg_weaken_cond(metric_diff.ipc)
+        fg_strengthen_cond = self.fg_strengthen_cond(metric_diff.instruction_ps)
+        fg_weaken_cond = self.fg_weaken_cond(metric_diff.instruction_ps)
 
         logger = logging.getLogger(__name__)
-        logger.info(f'metric_diff.ipc: {metric_diff.ipc}')
+        logger.info(f'metric_diff.instruction_ps: {metric_diff.instruction_ps}')
         logger.info(f'self.fg_strengthen_cond: {fg_strengthen_cond}')
         logger.info(f'self.fg_weaken_cond: {fg_weaken_cond}')
 

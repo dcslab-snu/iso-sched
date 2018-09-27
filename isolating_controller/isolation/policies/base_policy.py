@@ -3,10 +3,10 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import Mapping, Type
 
-from isolating_controller.metric_container.basic_metric import MetricDiff, BasicMetric
-from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, CoreIsolator
-from ...workload import Workload
 from .. import ResourceType
+from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
+from ...metric_container.basic_metric import BasicMetric, MetricDiff
+from ...workload import Workload
 
 
 class IsolationPolicy(metaclass=ABCMeta):
@@ -32,9 +32,9 @@ class IsolationPolicy(metaclass=ABCMeta):
     # FIXME: If you use policy without CPUIso., then changing ResourceType.Unknown to ResourceType.Memory
     def init_isolators(self) -> None:
         self._isolator_map = dict((
-            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl, ResourceType.CACHE)),
-            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl, ResourceType.MEMORY)),
-            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl, ResourceType.Unknown))
+            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
+            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
+            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl))
         ))
 
     @property
@@ -55,7 +55,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         logger.info(f'l3_int: {cur_metric.l3_intensity}, mem_int: {cur_metric.mem_intensity}')
         if abs(cur_metric.l3_intensity) < IsolationPolicy._CPU_THRESHOLD \
                 and abs(cur_metric.mem_intensity) < IsolationPolicy._CPU_THRESHOLD:
-                return ResourceType.CPU
+            return ResourceType.CPU
 
         if metric_diff.local_mem_util_ps > 0 and metric_diff.l3_hit_ratio > 0:
             if metric_diff.l3_hit_ratio > metric_diff.local_mem_util_ps:
@@ -140,22 +140,13 @@ class IsolationPolicy(metaclass=ABCMeta):
         else:
             return fg_wl
 
-    def update_aggr_ipc(self) -> None:
+    # FIXME: replace to property
+    def update_aggr_instr(self) -> None:
         fg_diff = self._fg_wl.calc_metric_diff()
         bg_diff = self._bg_wl.calc_metric_diff()
-        self._fg_wl._ipc_diff = fg_diff.ipc
-        self._bg_wl._ipc_diff = bg_diff.ipc
-        self._aggr_ipc_diff = fg_diff.ipc + bg_diff.ipc
-
-    def contention_diff(self, rtype: ResourceType) -> float:
-        fg_diff = self._fg_wl.calc_metric_diff()
-        bg_diff = self._bg_wl.calc_metric_diff()
-        if rtype is ResourceType.CPU:
-            return fg_diff.ipc + bg_diff.ipc
-        elif rtype is ResourceType.CACHE:
-            return fg_diff.l3_hit_ratio + bg_diff.l3_hit_ratio
-        elif rtype is ResourceType.MEMORY:
-            return fg_diff.local_mem_util_ps + bg_diff.local_mem_util_ps
+        self._fg_wl._ipc_diff = fg_diff.instruction_ps
+        self._bg_wl._ipc_diff = bg_diff.instruction_ps
+        self._aggr_ipc_diff = fg_diff.instruction_ps + bg_diff.instruction_ps
 
     def set_idle_isolator(self) -> None:
         self._cur_isolator.yield_isolation()

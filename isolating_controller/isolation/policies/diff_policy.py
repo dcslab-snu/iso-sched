@@ -2,9 +2,9 @@
 
 import logging
 
-from .. import ResourceType
 from .base_policy import IsolationPolicy
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
+from .. import ResourceType
+from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
@@ -31,7 +31,7 @@ class DiffPolicy(IsolationPolicy):
 
         resource: ResourceType = self.contentious_resource()
 
-        if self._is_sched_isolated and self._is_mem_isolated and self._is_llc_isolated:
+        if self._is_core_isolated and self._is_mem_isolated and self._is_llc_isolated:
             self._clear_flags()
             logger.debug('****All isolators are applicable for now!****')
 
@@ -48,7 +48,7 @@ class DiffPolicy(IsolationPolicy):
             return True
 
         elif not self._is_core_isolated and resource is ResourceType.MEMORY:
-            self._cur_isolator = self._isolator_map[CoreIsolator]
+            self._cur_isolator = self._isolator_map[SchedIsolator]
             self._is_core_isolated = True
             logger.info(f'Core Isolation for {self._fg_wl} is started')
             return True

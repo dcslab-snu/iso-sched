@@ -56,8 +56,7 @@ class SwapIsolator:
             if swap_out_grp is None:
                 swap_out_grp = group
 
-            # FIXME: replace to property
-            group.update_aggr_ipc()
+            group.update_aggr_instr()
             swap_in_grp = max(swap_in_grp, group, key=lambda x: x.aggr_ipc)
             swap_out_grp = min(swap_out_grp, group, key=lambda x: x.aggr_ipc)
 
@@ -122,6 +121,9 @@ class SwapIsolator:
         return out_proc, in_proc
 
     def try_swap(self) -> None:
+        if len(self._all_groups) < 2:
+            return
+
         self.update_cont_group()
         self.choose_swap_candidates()
         if self.swap_is_needed:
