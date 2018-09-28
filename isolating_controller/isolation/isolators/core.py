@@ -1,12 +1,9 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional, Tuple
 
 from .base_isolator import Isolator
 from .. import NextStep, ResourceType
-from ...utils import hyphen, numa_topology
-from ...utils.cgroup import CpuSet
 from ...workload import Workload
 
 
@@ -14,19 +11,17 @@ class CoreIsolator(Isolator):
     _DOD_THRESHOLD = 0.005
     _FORCE_THRESHOLD = 0.1
 
-    def __init__(self, foreground_wl: Workload, background_wl: Workload, cont_resource: Optional[ResourceType]) -> None:
-        super().__init__(foreground_wl, background_wl, cont_resource)
+    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
+        super().__init__(foreground_wl, background_wl)
 
-        self._fg_cpuset: Tuple[int, ...] = foreground_wl.cpuset
-        self._bg_cpuset: Tuple[int, ...] = background_wl.cpuset
-        self._cur_bg_step: int = min(self._bg_cpuset)
-        self._cur_fg_step: int = max(self._fg_cpuset)
+        # FIXME: hard coded (contiguous allocation)
+        self._cur_fg_step: int = foreground_wl.orig_bound_cores[-1]
+        self._cur_bg_step: int = background_wl.orig_bound_cores[0]
 
-        self._prev_fg_affinity: Tuple[int, ...] = foreground_wl.cpuset
-        self._prev_bg_affinity: Tuple[int, ...] = background_wl.cpuset
+        self._bg_next_step: NextStep = NextStep.IDLE
+        self._fg_next_step: NextStep = NextStep.IDLE
 
-        self._fg_cgroup = CpuSet(foreground_wl.group_name)
-        self._bg_cgroup = CpuSet(background_wl.group_name)
+        self._contentious_resource: ResourceType = ResourceType.MEMORY
 
     def strengthen(self) -> 'CoreIsolator':
         """
@@ -34,22 +29,13 @@ class CoreIsolator(Isolator):
         TODO: Changing step size, if needed
         """
         # NOTE: Caller is assumed that BG workload
-        logger = logging.getLogger(__name__)
-        logger.debug(f'self._cur_bg_step: {self._cur_bg_step}')
-        logger.debug(f'self._cur_fg_step: {self._cur_fg_step}')
-        logger.debug(f'self._bg_next_step: {self._bg_next_step.name}')
-        logger.debug(f'self._fg_next_step: {self._fg_next_step.name}')
 
         if self._bg_next_step == NextStep.STRENGTHEN:
-            bg_cpuset = set(self._bg_cpuset)
-            bg_cpuset.remove(self._cur_bg_step)
-            self._bg_cpuset = tuple(bg_cpuset)
             self._cur_bg_step += 1
+
         if self._fg_next_step == NextStep.WEAKEN:
-            fg_cpuset = set(self._fg_cpuset)
             self._cur_fg_step += 1
-            fg_cpuset.add(self._cur_fg_step)
-            self._fg_cpuset = tuple(fg_cpuset)
+
         return self
 
     def weaken(self) -> 'CoreIsolator':
@@ -58,68 +44,30 @@ class CoreIsolator(Isolator):
         TODO: Changing step size, if needed
         """
         # NOTE: Caller is assumed that BG workload
-        logger = logging.getLogger(__name__)
-        logger.debug(f'self._cur_bg_step: {self._cur_bg_step}')
-        logger.debug(f'self._cur_fg_step: {self._cur_fg_step}')
-        logger.debug(f'self._bg_next_step: {self._bg_next_step.name}')
-        logger.debug(f'self._fg_next_step: {self._fg_next_step.name}')
 
         if self._bg_next_step == NextStep.WEAKEN:
-            bg_cpuset = set(self._bg_cpuset)
             self._cur_bg_step -= 1
-            bg_cpuset.add(self._cur_bg_step)
-            self._bg_cpuset = tuple(bg_cpuset)
+
         if self._fg_next_step == NextStep.STRENGTHEN:
-            fg_cpuset = set(self._fg_cpuset)
-            fg_cpuset.remove(self._cur_fg_step)
-            self._fg_cpuset = tuple(fg_cpuset)
             self._cur_fg_step -= 1
+
         return self
 
     @property
     def is_max_level(self) -> bool:
-        logger = logging.getLogger(__name__)
-        logger.debug(f'bg max cpuset: {max(numa_topology.node_to_core[self._background_wl.cur_socket_id()])}')
-        logger.debug(f'self._cur_bg_step: {self._cur_bg_step}')
-        logger.debug(f'self._cur_fg_step: {self._cur_fg_step}')
-        logger.debug(f'self._bg_next_step: {self._bg_next_step.name}')
-        logger.debug(f'self._fg_next_step: {self._fg_next_step.name}')
-
-        # FIXME: hard coded (Background can take lower cores)
-        # FIXME: How about first condition is true but the other is false?
-        if self._cur_bg_step == max(numa_topology.node_to_core[self._background_wl.cur_socket_id()]):
-            self._bg_next_step = NextStep.STOP
-            return True
-        # if self._cur_fg_step == self._cur_bg_step-1:
-        #    self._fg_next_step = NextStep.STOP
-        else:
-            return False
+        # FIXME: hard coded (contiguous allocation)
+        return self._cur_bg_step == self._background_wl.orig_bound_cores[-1] and \
+               self._cur_fg_step == self._cur_bg_step - 1
 
     @property
     def is_min_level(self) -> bool:
-        logger = logging.getLogger(__name__)
-        logger.debug(f'self._cur_bg_step: {self._cur_bg_step}')
-        logger.debug(f'self._cur_fg_step: {self._cur_fg_step}')
-        logger.debug(f'self._bg_next_step: {self._bg_next_step.name}')
-        logger.debug(f'self._fg_next_step: {self._fg_next_step.name}')
-
-        # FIXME: How about first condition is true but the other is false?
-        if self._cur_bg_step == self._cur_fg_step + 1:
-            return True
-        # if self._cur_fg_step == min(self._cpu_topo[self._foreground_wl.socket_id]):
-        #    return True
-        else:
-            return False
+        return self._cur_bg_step == self._background_wl.orig_bound_cores[0] and \
+               self._cur_fg_step == self._foreground_wl.orig_bound_cores[-1]
 
     def _enforce(self) -> None:
-        logger = logging.getLogger(__name__)
-        logger.debug(f'after enforcing : self._cur_bg_step is {self._cur_bg_step}')
-        logger.debug(f'after enforcing : self._cur_fg_step is {self._cur_fg_step}')
-        logger.debug(f'after enforcing : affinity of background is {hyphen.convert_to_hyphen(self._bg_cpuset)}')
-        logger.debug(f'after enforcing : affinity of foreground is {hyphen.convert_to_hyphen(self._fg_cpuset)}')
-
-        self._bg_cgroup.assign_cpus(set(self._bg_cpuset))
-        self._fg_cgroup.assign_cpus(set(self._fg_cpuset))
+        # FIXME: hard coded (contiguous allocation)
+        self._foreground_wl.bound_cores = range(self._foreground_wl.orig_bound_cores[0], self._cur_fg_step)
+        self._background_wl.bound_cores = range(self._cur_bg_step, self._background_wl.orig_bound_cores[-1])
 
     def _first_decision(self) -> NextStep:
         curr_diff = None
@@ -134,36 +82,28 @@ class CoreIsolator(Isolator):
         logger.debug(f'current diff: {curr_diff:>7.4f}')
 
         # FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
-        fg_strengthen_cond = self.fg_strengthen_cond(metric_diff.instruction_ps)
-        fg_weaken_cond = self.fg_weaken_cond(metric_diff.instruction_ps)
         if curr_diff < 0:
             if self.is_max_level:
-                self._bg_next_step = NextStep.STOP
                 return NextStep.STOP
             else:
-                self._bg_next_step = NextStep.STRENGTHEN
-                if fg_weaken_cond:
-                    self._fg_next_step = NextStep.WEAKEN
-                return NextStep.STRENGTHEN
+                return self._strengthen_condition(metric_diff.instruction_ps)
+
         elif curr_diff <= CoreIsolator._FORCE_THRESHOLD:
-            self._bg_next_step = NextStep.STOP
             return NextStep.STOP
+
         else:
             if self.is_min_level:
-                self._bg_next_step = NextStep.STOP
                 return NextStep.STOP
             else:
-                self._bg_next_step = NextStep.WEAKEN
-                if fg_strengthen_cond:
-                    self._fg_next_step = NextStep.STRENGTHEN
-                return NextStep.WEAKEN
+                return self._weaken_condition(metric_diff.instruction_ps)
 
     def _monitoring_result(self) -> NextStep:
+        logger = logging.getLogger(__name__)
+        logger.info(f'self._contentious_resource: {self._contentious_resource.name}')
+
         metric_diff = self._foreground_wl.calc_metric_diff()
         curr_diff = None
         diff_of_diff = None
-        logger = logging.getLogger(__name__)
-        logger.info(f'self._contentious_resource: {self._contentious_resource.name}')
         if self._contentious_resource == ResourceType.MEMORY:
             curr_diff = metric_diff.local_mem_util_ps
             prev_diff = self._prev_metric_diff.local_mem_util_ps
@@ -173,75 +113,61 @@ class CoreIsolator(Isolator):
             prev_diff = self._prev_metric_diff.instruction_ps
             diff_of_diff = curr_diff - prev_diff
 
-        logger = logging.getLogger(__name__)
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
-        # FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
-        fg_strengthen_cond = self.fg_strengthen_cond(metric_diff.instruction_ps)
-        fg_weaken_cond = self.fg_weaken_cond(metric_diff.instruction_ps)
-
-        logger = logging.getLogger(__name__)
-        logger.info(f'metric_diff.instruction_ps: {metric_diff.instruction_ps}')
-        logger.info(f'self.fg_strengthen_cond: {fg_strengthen_cond}')
-        logger.info(f'self.fg_weaken_cond: {fg_weaken_cond}')
-
         # Case1 : diff is too small to perform isolation
-        if abs(diff_of_diff) <= CoreIsolator._DOD_THRESHOLD \
+        if self.is_max_level or self.is_min_level \
+                or abs(diff_of_diff) <= CoreIsolator._DOD_THRESHOLD \
                 or abs(curr_diff) <= CoreIsolator._DOD_THRESHOLD:
-            self._bg_next_step = NextStep.STOP
-            # self._fg_next_step = NextStep.STOP # This line depends on bg status
             return NextStep.STOP
 
         # Case2 : FG shows lower contention than solo-run -> Slower FG or Faster BG
         elif curr_diff > 0:
-            self._bg_next_step = NextStep.WEAKEN
-            if self.bg_outside_boundary():
-                self._bg_next_step = NextStep.STOP
-            if fg_strengthen_cond is True:
-                self._fg_next_step = NextStep.STRENGTHEN
-            elif fg_strengthen_cond is False:
-                self._fg_next_step = NextStep.STOP
-            return NextStep.WEAKEN
+            return self._weaken_condition(metric_diff.instruction_ps)
 
         # Case3 : FG shows higher contention than solo-run
         else:
+            return self._strengthen_condition(metric_diff.instruction_ps)
+
+    def _weaken_condition(self, fg_instruction_ps: float) -> NextStep:
+        if self._cur_bg_step == self._background_wl.orig_bound_cores[0]:
+            self._bg_next_step = NextStep.IDLE
+        else:
+            self._bg_next_step = NextStep.WEAKEN
+
+        # FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
+        # FIXME: hard coded (contiguous allocation)
+        if fg_instruction_ps > 0 and self._foreground_wl.orig_bound_cores[-1] < self._cur_fg_step:
+            self._fg_next_step = NextStep.STRENGTHEN
+        else:
+            self._fg_next_step = NextStep.IDLE
+
+        if self._bg_next_step is NextStep.IDLE and self._fg_next_step is NextStep.IDLE:
+            return NextStep.STOP
+        else:
+            return NextStep.WEAKEN
+
+    def _strengthen_condition(self, fg_instruction_ps: float) -> NextStep:
+        if self._cur_bg_step == self._background_wl.orig_bound_cores[-1]:
+            self._bg_next_step = NextStep.IDLE
+        else:
             self._bg_next_step = NextStep.STRENGTHEN
-            if self.bg_outside_boundary():
-                self._bg_next_step = NextStep.STOP
-            if fg_weaken_cond:
-                self._fg_next_step = NextStep.WEAKEN
-            elif fg_weaken_cond is False:
-                self._fg_next_step = NextStep.STOP
+
+        # FIXME: hard coded (contiguous allocation)
+        if fg_instruction_ps < 0 \
+                and (self._bg_next_step is NextStep.STRENGTHEN or self._cur_bg_step - self._cur_fg_step > 1):
+            self._fg_next_step = NextStep.WEAKEN
+        else:
+            self._fg_next_step = NextStep.IDLE
+
+        if self._bg_next_step is NextStep.IDLE and self._fg_next_step is NextStep.IDLE:
+            return NextStep.STOP
+        else:
             return NextStep.STRENGTHEN
-
-    def bg_outside_boundary(self) -> bool:
-        # FIXME: Assumption about fg's cpuset IDs are smaller than bg's ones. (kind of hard coded)
-        max_bg_cpuid = max(numa_topology.node_to_core[self._background_wl.cur_socket_id()])
-        min_bg_cpuid = max(self._fg_cpuset) + 1
-        if not (min_bg_cpuid < self._cur_bg_step < max_bg_cpuid):
-            return True
-        else:
-            return False
-
-    def fg_strengthen_cond(self, fg_ipc_diff) -> bool:
-        min_skt_cpuid = min(numa_topology.node_to_core[self._foreground_wl.cur_socket_id()])
-        if fg_ipc_diff > 0 and self._cur_fg_step > min_skt_cpuid:
-            return True
-        else:
-            return False
-
-    def fg_weaken_cond(self, fg_ipc_diff) -> bool:
-        if fg_ipc_diff <= 0:
-            free_cpu = self._cur_bg_step - self._cur_fg_step
-            if (free_cpu > 0 and self._bg_next_step != NextStep.WEAKEN) \
-                    or (free_cpu == 0 and self._bg_next_step == NextStep.STOP):
-                return True
-        else:
-            return False
 
     def reset(self) -> None:
         if self._background_wl.is_running:
-            self._bg_cgroup.assign_cpus(self._prev_bg_affinity)
+            self._background_wl.bound_cores = self._background_wl.orig_bound_cores
         if self._foreground_wl.is_running:
-            self._fg_cgroup.assign_cpus(self._prev_fg_affinity)
+            self._foreground_wl.bound_cores = self._foreground_wl.orig_bound_cores

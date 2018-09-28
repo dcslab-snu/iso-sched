@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Mapping, Type
 
 from .. import ResourceType
-from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
+from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator
 from ...metric_container.basic_metric import BasicMetric, MetricDiff
 from ...workload import Workload
 
@@ -33,7 +33,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._isolator_map = dict((
             (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
             (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
-            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl))
+            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl))
         ))
 
     @property

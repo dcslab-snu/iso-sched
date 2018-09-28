@@ -4,7 +4,7 @@ import logging
 
 from .base_policy import IsolationPolicy
 from .. import ResourceType
-from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
 from ...workload import Workload
 
 
@@ -25,7 +25,8 @@ class GreedyDiffPolicy(IsolationPolicy):
         resource: ResourceType = self.contentious_resource()
 
         if resource is ResourceType.CPU:
-            self._cur_isolator = self._isolator_map[SchedIsolator]
+            self._cur_isolator = self._isolator_map[CoreIsolator]
+            self._cur_isolator._contentious_resource = ResourceType.CPU
             logger.info(f'Core Isolation for {self._fg_wl} is started to isolate {ResourceType.CPU.name}s')
             return True
 
@@ -42,7 +43,8 @@ class GreedyDiffPolicy(IsolationPolicy):
             return True
 
         elif resource is ResourceType.MEMORY:
-            self._cur_isolator = self._isolator_map[SchedIsolator]
+            self._cur_isolator = self._isolator_map[CoreIsolator]
+            self._cur_isolator._contentious_resource = ResourceType.MEMORY
             self._is_mem_isolated = False
             logger.info(f'Cpuset Isolation for {self._fg_wl} is started to isolate {ResourceType.MEMORY.name} BW')
             return True

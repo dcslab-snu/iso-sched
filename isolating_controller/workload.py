@@ -2,7 +2,7 @@
 
 from collections import deque
 from itertools import chain
-from typing import Deque, Iterable, Tuple
+from typing import Deque, Iterable, Set, Tuple
 
 import psutil
 
@@ -33,6 +33,9 @@ class Workload:
         self._cgroup_cpuset = CpuSet(self.group_name)
         self._cgroup_cpu = Cpu(self.group_name)
         self._resctrl = ResCtrl(self.group_name)
+
+        self._orig_bound_cores: Tuple[int, ...] = tuple(self._cgroup_cpuset.read_cpus())
+        self._orig_bound_mems: Set[int] = self._cgroup_cpuset.read_mems()
 
     def __repr__(self) -> str:
         return f'{self._name} (pid: {self._pid})'
@@ -77,6 +80,14 @@ class Workload:
         self._cgroup_cpuset.assign_cpus(core_ids)
 
     @property
+    def orig_bound_cores(self) -> Tuple[int, ...]:
+        return self._orig_bound_cores
+
+    @orig_bound_cores.setter
+    def orig_bound_cores(self, orig_bound_cores: Tuple[int, ...]) -> None:
+        self._orig_bound_cores = orig_bound_cores
+
+    @property
     def bound_mems(self) -> Tuple[int, ...]:
         return tuple(self._cgroup_cpuset.read_mems())
 
@@ -85,8 +96,12 @@ class Workload:
         self._cgroup_cpuset.assign_mems(affinity)
 
     @property
-    def perf_pid(self) -> int:
-        return self._perf_pid
+    def orig_bound_mems(self) -> Set[int]:
+        return self._orig_bound_mems
+
+    @orig_bound_mems.setter
+    def orig_bound_mems(self, orig_bound_mems: Set[int]) -> None:
+        self._orig_bound_mems = orig_bound_mems
 
     @property
     def perf_interval(self):
