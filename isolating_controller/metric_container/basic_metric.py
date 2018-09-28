@@ -2,7 +2,9 @@
 
 from time import localtime, strftime
 
-LLC_SIZE: float = 41943040
+from cpuinfo import cpuinfo
+
+LLC_SIZE = int(cpuinfo.get_cpu_info()['l3_cache_size'].split()[0]) * 1024
 
 
 class BasicMetric:
@@ -106,8 +108,7 @@ class BasicMetric:
 
     @property
     def l3_intensity(self) -> float:
-        l3_hit_ratio = 1 - self.l3miss_ratio
-        return self.llc_util * l3_hit_ratio
+        return self.llc_util * self.l3hit_ratio
 
     @property
     def mem_intensity(self) -> float:

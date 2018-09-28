@@ -16,7 +16,7 @@ class MemoryIsolator(Isolator):
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
-        self._bg_affinity = background_wl.cpuset
+        self._bg_affinity = background_wl.bound_cores
 
         # FIXME: hard coded
         self._cur_step = DVFS.MAX
@@ -41,9 +41,9 @@ class MemoryIsolator(Isolator):
 
     def _enforce(self) -> None:
         logger = logging.getLogger(__name__)
-        logger.info(f'frequency of cpuset {self._background_wl.cpuset} is {self._cur_step / 1_000_000}GHz')
+        logger.info(f'frequency of bound_cores {self._background_wl.bound_cores} is {self._cur_step / 1_000_000}GHz')
 
-        DVFS.set_freq(self._cur_step, self._background_wl.cpuset)
+        DVFS.set_freq(self._cur_step, self._background_wl.bound_cores)
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()

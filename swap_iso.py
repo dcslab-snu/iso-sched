@@ -4,10 +4,9 @@ import logging
 import os
 import signal
 from enum import IntEnum
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 from isolating_controller.isolation.policies.base_policy import IsolationPolicy
-from isolating_controller.utils.cgroup import CpuSet
 from isolating_controller.workload import Workload
 
 
@@ -90,8 +89,6 @@ class SwapIsolator:
 
     def do_swap(self) -> None:
         # Enable CPUSET memory migration
-        out_cgroup, in_cgroup = self.pre_swap_setup()
-
         out_wl = self._swap_candidates[SwapNextStep.OUT]
         in_wl = self._swap_candidates[SwapNextStep.IN]
 
@@ -99,26 +96,26 @@ class SwapIsolator:
         os.kill(out_wl.pid, signal.SIGSTOP)
         os.kill(in_wl.pid, signal.SIGSTOP)
 
-        out_cgroup.assign_cpus(in_wl.cpuset)
-        out_cgroup.assign_mems((in_wl.cur_socket_id(),))
-        in_cgroup.assign_cpus(out_wl.cpuset)
-        in_cgroup.assign_mems((out_wl.cur_socket_id(),))
+        out_cpus = out_wl.bound_cores
+        out_mems = out_wl.mems
+        in_cpus = in_wl.bound_cores
+        in_mems = in_wl.mems
+
+        out_wl.bound_cores = in_cpus
+        out_wl.mems = in_mems
+        in_wl.bound_cores = out_cpus
+        in_wl.mems = out_mems
 
         # Resume Procs
         os.kill(out_wl.pid, signal.SIGCONT)
         os.kill(in_wl.pid, signal.SIGCONT)
 
-    def pre_swap_setup(self) -> Tuple[CpuSet, CpuSet]:
+    def pre_swap_setup(self) -> None:
         swap_out_workload = self._swap_candidates[SwapNextStep.OUT]
         swap_in_workload = self._swap_candidates[SwapNextStep.IN]
 
-        out_proc = CpuSet(swap_out_workload.group_name)
-        in_proc = CpuSet(swap_in_workload.group_name)
-
-        out_proc.set_memory_migrate(True)
-        in_proc.set_memory_migrate(True)
-
-        return out_proc, in_proc
+        swap_out_workload.cgroup_cpuset.set_memory_migrate(True)
+        swap_in_workload.cgroup_cpuset.set_memory_migrate(True)
 
     def try_swap(self) -> None:
         if len(self._all_groups) < 2:

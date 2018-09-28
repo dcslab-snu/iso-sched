@@ -2,9 +2,10 @@
 
 
 import subprocess
-from typing import Iterable
+from typing import Iterable, Set
 
 from .base import BaseCgroup
+from ..hyphen import convert_to_set
 
 
 class CpuSet(BaseCgroup):
@@ -20,3 +21,11 @@ class CpuSet(BaseCgroup):
 
     def set_memory_migrate(self, flag: bool) -> None:
         subprocess.check_call(args=('cgset', '-r', f'cpuset.memory_migrate={int(flag)}', self._group_name))
+
+    def read_cpus(self) -> Set[int]:
+        cpus = subprocess.check_output(args=('cgget', '-nvr', 'bound_cores.cpus', self._group_name), encoding='ASCII')
+        return convert_to_set(cpus)
+
+    def read_mems(self) -> Set[int]:
+        cpus = subprocess.check_output(args=('cgget', '-nvr', 'bound_cores.mems', self._group_name), encoding='ASCII')
+        return convert_to_set(cpus)

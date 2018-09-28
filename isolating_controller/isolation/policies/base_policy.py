@@ -29,7 +29,6 @@ class IsolationPolicy(metaclass=ABCMeta):
     def __repr__(self) -> str:
         return f'{self.__class__.__name__} <fg: {self._fg_wl}, bg: {self._bg_wl}>'
 
-    # FIXME: If you use policy without CPUIso., then changing ResourceType.Unknown to ResourceType.Memory
     def init_isolators(self) -> None:
         self._isolator_map = dict((
             (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),

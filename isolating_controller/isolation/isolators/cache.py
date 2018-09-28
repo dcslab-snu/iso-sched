@@ -19,9 +19,6 @@ class CacheIsolator(Isolator):
         self._prev_step: Optional[int] = None
         self._cur_step: Optional[int] = None
 
-        self._fg_resctrl = ResCtrl(f'{foreground_wl.name}_{foreground_wl.pid}')
-        self._bg_resctrl = ResCtrl(f'{background_wl.name}_{background_wl.pid}')
-
     def strengthen(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
 
@@ -66,12 +63,12 @@ class CacheIsolator(Isolator):
             # FIXME: hard coded -> The number of socket is two at most
             masks = [ResCtrl.MIN_MASK, ResCtrl.MIN_MASK]
             masks[self._foreground_wl.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
-            self._fg_resctrl.assign_llc(*masks)
+            self._foreground_wl.resctrl.assign_llc(*masks)
 
             # FIXME: hard coded -> The number of socket is two at most
             masks = [ResCtrl.MIN_MASK, ResCtrl.MIN_MASK]
             masks[self._background_wl.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
-            self._bg_resctrl.assign_llc(*masks)
+            self._background_wl.resctrl.assign_llc(*masks)
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
@@ -129,8 +126,8 @@ class CacheIsolator(Isolator):
         if self._background_wl.is_running:
             bg_masks = masks.copy()
             bg_masks[self._background_wl.cur_socket_id()] = ResCtrl.MAX_MASK
-            ResCtrl.assign_llc(self._bg_resctrl, *bg_masks)
+            self._background_wl.resctrl.assign_llc(*bg_masks)
 
         if self._foreground_wl.is_running:
             masks[self._foreground_wl.cur_socket_id()] = ResCtrl.MAX_MASK
-            ResCtrl.assign_llc(self._fg_resctrl, *masks)
+            self._foreground_wl.resctrl.assign_llc(*masks)

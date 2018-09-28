@@ -4,7 +4,6 @@ import logging
 
 from .base_isolator import Isolator
 from .. import NextStep
-from ...utils.cgroup.cpuset import CpuSet
 from ...workload import Workload
 
 
@@ -23,8 +22,6 @@ class SchedIsolator(Isolator):
 
         # FIXME: hard coded
         self._prev_bg_affinity = range(8, 16) if background_wl.cur_socket_id() is 0 else range(24, 32)
-
-        self._bg_grp = CpuSet(background_wl.group_name)
 
     def strengthen(self) -> 'SchedIsolator':
         self._cur_step += 1
@@ -59,7 +56,7 @@ class SchedIsolator(Isolator):
             logger.info(f'affinity of background is {self._cur_step}-15')
 
         # FIXME: hard coded
-        self._bg_grp.assign_cpus(range(self._cur_step, 32 if self._background_wl.cur_socket_id() is 1 else 16))
+        self._background_wl.bound_cores = range(self._cur_step, 32 if self._background_wl.cur_socket_id() is 1 else 16)
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
@@ -107,4 +104,4 @@ class SchedIsolator(Isolator):
 
     def reset(self) -> None:
         if self._background_wl.is_running:
-            self._bg_grp.assign_cpus(self._prev_bg_affinity)
+            self._background_wl.bound_cores = self._prev_bg_affinity

@@ -2,16 +2,14 @@
 
 from collections import deque
 from itertools import chain
-from typing import Deque, Tuple
+from typing import Deque, Iterable, Tuple
 
-import cpuinfo
 import psutil
 
 from .metric_container.basic_metric import BasicMetric, MetricDiff
 from .solorun_data.datas import data_map
-from .utils import numa_topology
-
-L3_SIZE = int(cpuinfo.get_cpu_info()['l3_cache_size'].split()[0]) * 1024
+from .utils import ResCtrl, numa_topology
+from .utils.cgroup import Cpu, CpuSet
 
 
 class Workload:
@@ -32,11 +30,27 @@ class Workload:
         self._proc_info = psutil.Process(pid)
         self._ipc_diff: float = None
 
+        self._cgroup_cpuset = CpuSet(self.group_name)
+        self._cgroup_cpu = Cpu(self.group_name)
+        self._resctrl = ResCtrl(self.group_name)
+
     def __repr__(self) -> str:
         return f'{self._name} (pid: {self._pid})'
 
     def __hash__(self) -> int:
         return self._pid
+
+    @property
+    def cgroup_cpuset(self) -> CpuSet:
+        return self._cgroup_cpuset
+
+    @property
+    def cgroup_cpu(self) -> Cpu:
+        return self._cgroup_cpu
+
+    @property
+    def resctrl(self) -> ResCtrl:
+        return self._resctrl
 
     @property
     def name(self) -> str:
@@ -55,8 +69,20 @@ class Workload:
         return self._metrics
 
     @property
-    def cpuset(self) -> Tuple[int, ...]:
-        return tuple(self._proc_info.cpu_affinity())
+    def bound_cores(self) -> Tuple[int, ...]:
+        return tuple(self._cgroup_cpuset.read_cpus())
+
+    @bound_cores.setter
+    def bound_cores(self, core_ids: Iterable[int]):
+        self._cgroup_cpuset.assign_cpus(core_ids)
+
+    @property
+    def bound_mems(self) -> Tuple[int, ...]:
+        return tuple(self._cgroup_cpuset.read_mems())
+
+    @bound_mems.setter
+    def bound_mems(self, affinity: Iterable[int]):
+        self._cgroup_cpuset.assign_mems(affinity)
 
     @property
     def perf_pid(self) -> int:
@@ -94,7 +120,7 @@ class Workload:
             return tuple()
 
     def cur_socket_id(self) -> int:
-        sockets = frozenset(numa_topology.core_to_node[core_id] for core_id in self.cpuset)
+        sockets = frozenset(numa_topology.core_to_node[core_id] for core_id in self.bound_cores)
 
         # FIXME: hard coded
         if len(sockets) is not 1:

@@ -1,7 +1,9 @@
 # coding: UTF-8
 
+import re
 import subprocess
 from pathlib import Path
+from typing import List, Tuple
 
 
 def len_of_mask(mask: str) -> int:
@@ -24,6 +26,7 @@ class ResCtrl:
     MIN_BITS: int = int((MOUNT_POINT / 'info' / 'L3' / 'min_cbm_bits').read_text())
     MIN_MASK: str = bits_to_mask(MIN_BITS)
     STEP = 1
+    _read_regex: re = re.compile(r'L3:((\d+=[0-9a-fA-F]+;?)*)', re.MULTILINE)
 
     def __init__(self, group_name: str) -> None:
         self._group_name: str = group_name
@@ -45,8 +48,22 @@ class ResCtrl:
     def assign_llc(self, *masks: str) -> None:
         masks = (f'{i}={mask}' for i, mask in enumerate(masks))
         mask = ';'.join(masks)
-        subprocess.run(args=('sudo', 'tee', str(ResCtrl.MOUNT_POINT / self._group_name / 'schemata')),
+        subprocess.run(args=('sudo', 'tee', str(self._group_path / 'schemata')),
                        input=f'L3:{mask}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
+
+    def read_assigned_llc(self) -> Tuple[int, ...]:
+        schemata = self._group_path / 'schemata'
+        if not schemata.is_file():
+            raise ProcessLookupError()
+
+        with schemata.open() as fp:
+            content: str = fp.read().strip()
+
+        l3_schemata = ResCtrl._read_regex.search(content).group(1)
+
+        # example: [('0', '00fff'), ('1', 'fff00')]
+        pairs: List[Tuple[str, str]] = sorted(tuple(pair.split('=')) for pair in l3_schemata.split(';'))
+        return tuple(len_of_mask(mask) for socket, mask in pairs)
 
     @staticmethod
     def gen_mask(start: int, end: int = None) -> str:
@@ -59,4 +76,4 @@ class ResCtrl:
         return format(((1 << (end - start)) - 1) << (ResCtrl.MAX_BITS - end), 'x')
 
     def remove_group(self) -> None:
-        subprocess.check_call(args=('sudo', 'rmdir', str(ResCtrl.MOUNT_POINT / self._group_name)))
+        subprocess.check_call(args=('sudo', 'rmdir', str(self._group_path)))
