@@ -1,7 +1,6 @@
 # coding: UTF-8
 
 import logging
-from itertools import chain
 
 from .base_isolator import Isolator
 from .. import NextStep
@@ -16,7 +15,7 @@ class MemoryIsolator(Isolator):
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
-        self._bg_affinity = background_wl.bound_cores
+        self._orig_bg_affinity = background_wl.bound_cores
 
         # FIXME: hard coded
         self._cur_step = DVFS.MAX
@@ -94,4 +93,4 @@ class MemoryIsolator(Isolator):
                 return NextStep.STRENGTHEN
 
     def reset(self) -> None:
-        DVFS.set_freq(DVFS.MAX, chain(self._bg_affinity))
+        DVFS.set_freq(DVFS.MAX, self._orig_bg_affinity)

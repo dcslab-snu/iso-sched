@@ -1,7 +1,7 @@
 # coding: UTF-8
 
 from pathlib import Path
-from typing import Dict, Set
+from typing import Dict, Mapping, Set
 
 from .hyphen import convert_to_set
 
@@ -54,5 +54,5 @@ def _core_to_node() -> Dict[int, int]:
     return ret_dict
 
 
-node_to_core: Dict[int, Set[int]] = _node_to_core()  # key: socket id, value: corresponding core ids
-core_to_node: Dict[int, int] = _core_to_node()  # key: core id, value: corresponding socket id
+node_to_core: Mapping[int, Set[int]] = _node_to_core()  # key: socket id, value: corresponding core ids
+core_to_node: Mapping[int, int] = _core_to_node()  # key: core id, value: corresponding socket id

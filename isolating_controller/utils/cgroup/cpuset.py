@@ -23,9 +23,9 @@ class CpuSet(BaseCgroup):
         subprocess.check_call(args=('cgset', '-r', f'cpuset.memory_migrate={int(flag)}', self._group_name))
 
     def read_cpus(self) -> Set[int]:
-        cpus = subprocess.check_output(args=('cgget', '-nvr', 'bound_cores.cpus', self._group_name), encoding='ASCII')
+        cpus = subprocess.check_output(args=('cgget', '-nvr', 'cpuset.cpus', self._group_name), encoding='ASCII')
         return convert_to_set(cpus)
 
     def read_mems(self) -> Set[int]:
-        cpus = subprocess.check_output(args=('cgget', '-nvr', 'bound_cores.mems', self._group_name), encoding='ASCII')
+        cpus = subprocess.check_output(args=('cgget', '-nvr', 'cpuset.mems', self._group_name), encoding='ASCII')
         return convert_to_set(cpus)
