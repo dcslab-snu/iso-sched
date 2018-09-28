@@ -102,23 +102,16 @@ class CacheIsolator(Isolator):
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
-        if self._cur_step is not None \
-                and not (ResCtrl.MIN_BITS < self._cur_step < ResCtrl.MAX_BITS) \
+        if self.is_min_level or self.is_max_level \
                 or abs(diff_of_diff) <= CacheIsolator._DOD_THRESHOLD \
                 or abs(curr_diff) <= CacheIsolator._DOD_THRESHOLD:
             return NextStep.STOP
 
         elif curr_diff > 0:
-            if self.is_min_level:
-                return NextStep.STOP
-            else:
-                return NextStep.WEAKEN
+            return NextStep.WEAKEN
 
         else:
-            if self.is_max_level:
-                return NextStep.STOP
-            else:
-                return NextStep.STRENGTHEN
+            return NextStep.STRENGTHEN
 
     def reset(self) -> None:
         masks = [ResCtrl.MIN_MASK] * (max(numa_topology.cur_online_nodes()) + 1)

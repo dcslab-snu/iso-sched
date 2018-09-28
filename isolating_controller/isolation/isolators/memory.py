@@ -75,22 +75,16 @@ class MemoryIsolator(Isolator):
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
-        if not (DVFS.MIN < self._cur_step < DVFS.MAX) \
+        if self.is_min_level or self.is_max_level \
                 or abs(diff_of_diff) <= MemoryIsolator._DOD_THRESHOLD \
                 or abs(curr_diff) <= MemoryIsolator._DOD_THRESHOLD:
             return NextStep.STOP
 
         elif curr_diff > 0:
-            if self.is_max_level:
-                return NextStep.STOP
-            else:
-                return NextStep.WEAKEN
+            return NextStep.WEAKEN
 
         else:
-            if self.is_min_level:
-                return NextStep.STOP
-            else:
-                return NextStep.STRENGTHEN
+            return NextStep.STRENGTHEN
 
     def reset(self) -> None:
         DVFS.set_freq(DVFS.MAX, self._orig_bg_affinity)

@@ -15,13 +15,7 @@ class SchedIsolator(Isolator):
         super().__init__(foreground_wl, background_wl)
 
         # FIXME: hard coded
-        if background_wl.cur_socket_id() is 1:
-            self._cur_step = 24
-        else:
-            self._cur_step = 8
-
-        # FIXME: hard coded
-        self._prev_bg_affinity = range(8, 16) if background_wl.cur_socket_id() is 0 else range(24, 32)
+        self._cur_step = background_wl.orig_bound_cores[0]
 
     def strengthen(self) -> 'SchedIsolator':
         self._cur_step += 1
@@ -34,29 +28,20 @@ class SchedIsolator(Isolator):
     @property
     def is_max_level(self) -> bool:
         # FIXME: hard coded
-        if self._background_wl.cur_socket_id() is 1:
-            return self._cur_step == 31
-        else:
-            return self._cur_step == 15
+        return self._cur_step == self._background_wl.orig_bound_cores[-1]
 
     @property
     def is_min_level(self) -> bool:
         # FIXME: hard coded
-        if self._background_wl.cur_socket_id() is 1:
-            return self._cur_step == 24
-        else:
-            return self._cur_step == 8
+        return self._cur_step == self._background_wl.orig_bound_cores[0]
 
     def _enforce(self) -> None:
         logger = logging.getLogger(__name__)
         # FIXME: hard coded
-        if self._background_wl.cur_socket_id() is 1:
-            logger.info(f'affinity of background is {self._cur_step}-31')
-        else:
-            logger.info(f'affinity of background is {self._cur_step}-15')
+        logger.info(f'affinity of background is {self._cur_step}-{self._background_wl.orig_bound_cores[-1]}')
 
         # FIXME: hard coded
-        self._background_wl.bound_cores = range(self._cur_step, 32 if self._background_wl.cur_socket_id() is 1 else 16)
+        self._background_wl.bound_cores = range(self._cur_step, self._background_wl.orig_bound_cores[-1] + 1)
 
     def _first_decision(self) -> NextStep:
         metric_diff = self._foreground_wl.calc_metric_diff()
@@ -90,8 +75,7 @@ class SchedIsolator(Isolator):
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
         # FIXME: hard coded
-        if (self._background_wl.cur_socket_id() is 1 and not (24 < self._cur_step < 31) or
-            self._background_wl.cur_socket_id() is 0 and not (8 < self._cur_step < 15)) \
+        if self.is_min_level or self.is_max_level \
                 or abs(diff_of_diff) <= SchedIsolator._DOD_THRESHOLD \
                 or abs(curr_diff) <= SchedIsolator._DOD_THRESHOLD:
             return NextStep.STOP
@@ -104,4 +88,4 @@ class SchedIsolator(Isolator):
 
     def reset(self) -> None:
         if self._background_wl.is_running:
-            self._background_wl.bound_cores = self._prev_bg_affinity
+            self._background_wl.bound_cores = self._background_wl.orig_bound_cores
