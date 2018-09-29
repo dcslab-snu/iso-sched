@@ -65,9 +65,13 @@ class CoreIsolator(Isolator):
                self._cur_fg_step == self._foreground_wl.orig_bound_cores[-1]
 
     def _enforce(self) -> None:
+        logger = logging.getLogger(__name__)
+        logger.debug(f'fg affinity : {self._foreground_wl.orig_bound_cores[0]}-{self._cur_fg_step}')
+        logger.debug(f'bg affinity : {self._cur_bg_step}-{self._background_wl.orig_bound_cores[-1]}')
+
         # FIXME: hard coded (contiguous allocation)
-        self._foreground_wl.bound_cores = range(self._foreground_wl.orig_bound_cores[0], self._cur_fg_step)
-        self._background_wl.bound_cores = range(self._cur_bg_step, self._background_wl.orig_bound_cores[-1])
+        self._foreground_wl.bound_cores = range(self._foreground_wl.orig_bound_cores[0], self._cur_fg_step + 1)
+        self._background_wl.bound_cores = range(self._cur_bg_step, self._background_wl.orig_bound_cores[-1] + 1)
 
     def _first_decision(self) -> NextStep:
         curr_diff = None
