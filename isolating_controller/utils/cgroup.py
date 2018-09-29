@@ -36,11 +36,17 @@ class Cgroup:
         mem_ids = ','.join(map(str, socket_set))
         subprocess.check_call(args=('cgset', '-r', f'cpuset.mems={mem_ids}', self._group_name))
 
-    def _get_cpu_affinity_from_group(self) -> Set[int]:
+    def get_cpu_affinity_from_group(self) -> Set[int]:
         with open(f'{Cgroup.CPUSET_MOUNT_POINT}/{self._group_name}/cpuset.cpus', "r") as fp:
             line: str = fp.readline()
             core_set: Set[int] = convert_to_set(line)
         return core_set
+
+    def get_mem_affinity_from_group(self) -> Set[int]:
+        with open(f'{Cgroup.CPUSET_MOUNT_POINT}/{self._group_name}/cpuset.mems', "r") as fp:
+            line: str = fp.readline()
+            mem_set: Set[int] = convert_to_set(line)
+        return mem_set
 
     def limit_cpu_quota(self, limit_percentage: float, period: Optional[int]=None) -> None:
         if period is None:
@@ -48,7 +54,7 @@ class Cgroup:
                 line: str = fp.readline()
                 period = int(line)
 
-        cpu_cores = self._get_cpu_affinity_from_group()
+        cpu_cores = self.get_cpu_affinity_from_group()
         quota = int(period * limit_percentage/100 * len(cpu_cores))
         subprocess.check_call(args=('cgset', '-r', f'cpu.cfs_quota_us={quota}', self._group_name))
 

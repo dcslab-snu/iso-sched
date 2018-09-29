@@ -1,12 +1,8 @@
 # coding: UTF-8
 
 import subprocess
-import asyncio
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
-
-#import aiofiles
-#from aiofiles.base import AiofilesContextManager
+from typing import List
 
 
 def len_of_mask(mask: str) -> int:
@@ -65,3 +61,40 @@ class ResCtrl:
 
     def remove_group(self) -> None:
         subprocess.check_call(args=('sudo', 'rmdir', str(ResCtrl.MOUNT_POINT / self._group_name)))
+
+    def get_llc_mask(self) -> List[str]:
+        """
+        :return: `socket_masks` which is the elements of list in hex_str
+        """
+        proc = subprocess.Popen(['cat', f'{ResCtrl.MOUNT_POINT}/{self._group_name}/schemata'],
+                                stdout=subprocess.PIPE)
+        line = proc.communicate()[0]
+        striped_schema_line = line.lstrip('L3:').split(';')
+        socket_masks = list()
+        for i, item in enumerate(striped_schema_line):
+            mask = item.lstrip(f'{i}=')
+            socket_masks.append(mask)
+        return socket_masks
+
+    @staticmethod
+    def get_llc_bits_from_mask(input_list: List[str]) -> List[int]:
+        """
+        :param input_list: Assuming the elements of list is hex_str such as "0xfffff"
+        :return:
+        """
+        output_list = list()
+        for mask in input_list:
+            hex_str = mask
+            hex_int = int(hex_str, 16)
+            bin_tmp = bin(hex_int)
+            llc_bits = len(bin_tmp.lstrip('0b'))
+            output_list.append(llc_bits)
+        return output_list
+
+    def read_llc_bits(self) -> int:
+        socket_masks = self.get_llc_mask()
+        llc_bits_list = ResCtrl.get_llc_bits_from_mask(socket_masks)
+        ret_llc_bits = 0
+        for llc_bits in llc_bits_list:
+            ret_llc_bits += llc_bits
+        return ret_llc_bits

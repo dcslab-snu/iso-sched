@@ -21,7 +21,7 @@ class DVFS:
         self.set_freq_cgroup(DVFS.MAX)
 
     def set_freq_cgroup(self, target_freq: int):
-        cur_grp_cpuset = self._cur_cgroup._get_cpu_affinity_from_group()
+        cur_grp_cpuset = self._cur_cgroup.get_cpu_affinity_from_group()
         DVFS.set_freq(target_freq, chain(cur_grp_cpuset))
 
     @property
