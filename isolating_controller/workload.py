@@ -28,7 +28,7 @@ class Workload:
         self._perf_interval = perf_interval
 
         self._proc_info = psutil.Process(pid)
-        self._ipc_diff: float = None
+        self._inst_diff: float = None
 
         self._cgroup_cpuset = CpuSet(self.group_name)
         self._cgroup_cpu = Cpu(self.group_name)
@@ -112,12 +112,16 @@ class Workload:
         return self._proc_info.is_running()
 
     @property
-    def ipc_diff(self) -> float:
-        return self._ipc_diff
+    def inst_diff(self) -> float:
+        return self._inst_diff
 
     @property
     def group_name(self) -> str:
         return f'{self.name}_{self.pid}'
+
+    @property
+    def number_of_threads(self) -> int:
+        return self._proc_info.num_threads()
 
     def calc_metric_diff(self) -> MetricDiff:
         solorun_data = data_map[self.name]

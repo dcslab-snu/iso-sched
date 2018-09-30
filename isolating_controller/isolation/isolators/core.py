@@ -175,3 +175,23 @@ class CoreIsolator(Isolator):
             self._background_wl.bound_cores = self._background_wl.orig_bound_cores
         if self._foreground_wl.is_running:
             self._foreground_wl.bound_cores = self._foreground_wl.orig_bound_cores
+
+    @staticmethod
+    def _is_more_core_benefit(wl: Workload) -> bool:
+        wl_threads = wl.number_of_threads
+        wl_cpus= len(wl.cgroup_cpuset.read_cpus())
+        print(f'{wl.wl_type}, {wl.name}, threads : {wl_threads}, len(cpuset): {wl_cpus}')
+        if wl_threads > wl_cpus:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def _is_less_core_benefit(wl: Workload) -> bool:
+        wl_threads = wl.number_of_threads
+        wl_cpus= len(wl.cgroup_cpuset.read_cpus())
+        print(f'{wl.wl_type}, {wl.name}, threads : {wl_threads}, len(cpuset): {wl_cpus}')
+        if wl_threads < wl_cpus:
+            return True
+        else:
+            return False

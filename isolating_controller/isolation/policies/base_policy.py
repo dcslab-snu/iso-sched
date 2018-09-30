@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Dict, Type
 
 from .. import ResourceType
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator
+from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
 from ...metric_container.basic_metric import BasicMetric, MetricDiff
 from ...workload import Workload
 
@@ -21,7 +21,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._isolator_map: Dict[Type[Isolator], Isolator] = dict()
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
-        self._aggr_ipc_diff: float = None
+        self._aggr_inst_diff: float = None
 
     def __hash__(self) -> int:
         return id(self)
@@ -38,7 +38,8 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._isolator_map = dict((
             (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
             (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
-            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl))
+            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl)),
+            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl))
         ))
 
     @property
@@ -114,19 +115,19 @@ class IsolationPolicy(metaclass=ABCMeta):
         return f'{self._fg_wl.name}({self._fg_wl.pid})'
 
     @property
-    def aggr_ipc(self) -> float:
-        return self._aggr_ipc_diff
+    def aggr_inst(self) -> float:
+        return self._aggr_inst_diff
 
     @property
     def most_cont_workload(self) -> Workload:
         fg_wl = self.foreground_workload
         bg_wl = self.background_workload
 
-        fg_ipc_diff = fg_wl.ipc_diff
-        bg_ipc_diff = bg_wl.ipc_diff
+        fg_inst_diff = fg_wl.inst_diff
+        bg_inst_diff = bg_wl.inst_diff
 
         # FIXME: Below condition is likely to fail due to too little differences between fg and bg
-        if fg_ipc_diff < bg_ipc_diff:
+        if fg_inst_diff < bg_inst_diff:
             return fg_wl
         else:
             return bg_wl
@@ -136,8 +137,8 @@ class IsolationPolicy(metaclass=ABCMeta):
         fg_wl = self.foreground_workload
         bg_wl = self.background_workload
 
-        fg_ipc_diff = fg_wl.ipc_diff
-        bg_ipc_diff = bg_wl.ipc_diff
+        fg_ipc_diff = fg_wl.inst_diff
+        bg_ipc_diff = bg_wl.inst_diff
 
         # FIXME: Below condition is likely to fail due to too little differences between fg and bg
         if fg_ipc_diff > bg_ipc_diff:
@@ -164,7 +165,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         bg_diff = self._bg_wl.calc_metric_diff()
         self._fg_wl._ipc_diff = fg_diff.instruction_ps
         self._bg_wl._ipc_diff = bg_diff.instruction_ps
-        self._aggr_ipc_diff = fg_diff.instruction_ps + bg_diff.instruction_ps
+        self._aggr_inst_diff = fg_diff.instruction_ps + bg_diff.instruction_ps
 
     def set_idle_isolator(self) -> None:
         self._cur_isolator.yield_isolation()
