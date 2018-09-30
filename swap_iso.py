@@ -1,10 +1,11 @@
 # coding: UTF-8
 
 import logging
-import os
-import signal
+import subprocess
 from enum import IntEnum
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
+
+import psutil
 
 from isolating_controller.isolation.policies.base_policy import IsolationPolicy
 from isolating_controller.workload import Workload
@@ -19,10 +20,10 @@ class SwapIsolator:
     # FIXME: This threshold needs tests (How small diff is right for swapping workloads?)
     # "-0.5" means the IPCs of workloads in a group drop 50% compared to solo-run
     _IPC_DIFF_THRESHOLD = -0.5
+    _VIOLATION_THRESHOLD = 5
 
     def __init__(self, isolation_groups: Dict[IsolationPolicy, int]) -> None:
         """
-
         :param isolation_groups: Dict. Key is the index of group and Value is the group itself
         """
         self._all_groups: Dict[IsolationPolicy, int] = isolation_groups
@@ -31,8 +32,8 @@ class SwapIsolator:
         self._most_cont_group: Optional[IsolationPolicy] = None
         self._least_cont_group: Optional[IsolationPolicy] = None
 
-        self._most_cont_workload: Optional[Workload] = None
-        self._least_cont_workload: Optional[Workload] = None
+        self._prev_wls: Set[Workload] = set()
+        self._violation_count: int = 0
 
     def __del__(self):
         logger = logging.getLogger(__name__)
@@ -62,57 +63,73 @@ class SwapIsolator:
         self._most_cont_group = swap_out_grp
         self._least_cont_group = swap_in_grp
 
-    def choose_swap_candidates(self):
-        swap_out_grp = self._most_cont_group
-        swap_in_grp = self._least_cont_group
-
-        # FIXME: This part depends on the swap policy (Which one is selected for swapping)
-        # TODO: Need Tests for Swap Overhead
-        swap_out_wl = swap_out_grp.least_mem_bw_workload
-        swap_in_wl = swap_in_grp.least_mem_bw_workload  # It selects the bg workload in swap_in group
-
-        self._swap_candidates[SwapNextStep.OUT] = swap_out_wl
-        self._swap_candidates[SwapNextStep.IN] = swap_in_wl
-
-    def first_decision(self):
-        return
-
     def swap_is_needed(self) -> bool:
         # FIXME: We used the average ipc diff value (We assume two workloads in a group at most)
         avg_min_ipc_diff = self._most_cont_group.aggr_ipc / 2
+        print(avg_min_ipc_diff)
 
         # TODO: Test the _IPC_DIFF_THRESHOLD
-        if avg_min_ipc_diff < self._IPC_DIFF_THRESHOLD:
-            return True
+        if avg_min_ipc_diff > self._IPC_DIFF_THRESHOLD:
+            self._prev_wls.clear()
+            self._violation_count = 0
+            return False
+
+        if len(self._prev_wls) is 2 \
+                and self._most_cont_group.background_workload in self._prev_wls \
+                and self._least_cont_group.background_workload in self._prev_wls:
+            self._violation_count += 1
+            print(
+                    f'violation count of {self._most_cont_group.background_workload}, '
+                    f'{self._least_cont_group.background_workload} is {self._violation_count}')
+            return self._violation_count >= SwapIsolator._VIOLATION_THRESHOLD
+
         else:
+            self._prev_wls.clear()
+            self._prev_wls.add(self._most_cont_group.background_workload)
+            self._prev_wls.add(self._least_cont_group.background_workload)
+            self._violation_count = 1
             return False
 
     def do_swap(self) -> None:
+        self.pre_swap_setup()
+
         # Enable CPUSET memory migration
-        out_wl = self._swap_candidates[SwapNextStep.OUT]
-        in_wl = self._swap_candidates[SwapNextStep.IN]
+        out_wl = self._most_cont_group.background_workload
+        in_wl = self._least_cont_group.background_workload
 
-        # Suspend Procs and Enforce Swap Conf.
-        os.kill(out_wl.pid, signal.SIGSTOP)
-        os.kill(in_wl.pid, signal.SIGSTOP)
+        print(f'swap {out_wl}, {in_wl}')
 
-        out_cpus = out_wl.bound_cores
-        out_mems = out_wl.mems
-        in_cpus = in_wl.bound_cores
-        in_mems = in_wl.mems
+        try:
+            # Suspend Procs and Enforce Swap Conf.
+            out_wl.pause()
+            in_wl.pause()
 
-        out_wl.bound_cores = in_cpus
-        out_wl.mems = in_mems
-        in_wl.bound_cores = out_cpus
-        in_wl.mems = out_mems
+            in_tmp, out_tmp = in_wl.orig_bound_mems, out_wl.orig_bound_mems
+            in_wl.orig_bound_mems, out_wl.orig_bound_mems = out_tmp, in_tmp
+            in_tmp, out_tmp = in_wl.orig_bound_cores, out_wl.orig_bound_cores
+            in_wl.orig_bound_cores, out_wl.orig_bound_cores = out_tmp, in_tmp
 
-        # Resume Procs
-        os.kill(out_wl.pid, signal.SIGCONT)
-        os.kill(in_wl.pid, signal.SIGCONT)
+            in_tmp, out_tmp = in_wl.bound_mems, out_wl.bound_mems
+            in_wl.bound_mems, out_wl.bound_mems = out_tmp, in_tmp
+            in_tmp, out_tmp = in_wl.bound_cores, out_wl.bound_cores
+            in_wl.bound_cores, out_wl.bound_cores = out_tmp, in_tmp
+
+            self._most_cont_group.background_workload = in_wl
+            self._least_cont_group.background_workload = out_wl
+
+        except (psutil.NoSuchProcess, subprocess.CalledProcessError, ProcessLookupError) as e:
+            print(e)
+
+        finally:
+            # Resume Procs
+            out_wl.resume()
+            in_wl.resume()
+            self._violation_count = 0
+            self._prev_wls.clear()
 
     def pre_swap_setup(self) -> None:
-        swap_out_workload = self._swap_candidates[SwapNextStep.OUT]
-        swap_in_workload = self._swap_candidates[SwapNextStep.IN]
+        swap_out_workload = self._most_cont_group.background_workload
+        swap_in_workload = self._least_cont_group.background_workload
 
         swap_out_workload.cgroup_cpuset.set_memory_migrate(True)
         swap_in_workload.cgroup_cpuset.set_memory_migrate(True)
@@ -122,6 +139,6 @@ class SwapIsolator:
             return
 
         self.update_cont_group()
-        self.choose_swap_candidates()
-        if self.swap_is_needed:
+
+        if self.swap_is_needed():
             self.do_swap()

@@ -1,7 +1,7 @@
 # coding: UTF-8
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Mapping, Type
+from typing import Dict, Type
 
 from .. import ResourceType
 from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator
@@ -18,16 +18,21 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._fg_wl = fg_wl
         self._bg_wl = bg_wl
 
-        self._isolator_map: Mapping[Type[Isolator], Isolator] = dict()
+        self._isolator_map: Dict[Type[Isolator], Isolator] = dict()
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
         self._aggr_ipc_diff: float = None
 
     def __hash__(self) -> int:
-        return self._fg_wl.pid
+        return id(self)
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__} <fg: {self._fg_wl}, bg: {self._bg_wl}>'
+
+    def __del__(self) -> None:
+        isolators = tuple(self._isolator_map.keys())
+        for isolator in isolators:
+            del self._isolator_map[isolator]
 
     def init_isolators(self) -> None:
         self._isolator_map = dict((
@@ -78,9 +83,23 @@ class IsolationPolicy(metaclass=ABCMeta):
     def foreground_workload(self) -> Workload:
         return self._fg_wl
 
+    @foreground_workload.setter
+    def foreground_workload(self, new_workload: Workload):
+        self._fg_wl = new_workload
+        for isolator in self._isolator_map.values():
+            isolator.change_fg_wl(new_workload)
+            isolator.enforce()
+
     @property
     def background_workload(self) -> Workload:
         return self._bg_wl
+
+    @background_workload.setter
+    def background_workload(self, new_workload: Workload):
+        self._bg_wl = new_workload
+        for isolator in self._isolator_map.values():
+            isolator.change_bg_wl(new_workload)
+            isolator.enforce()
 
     @property
     def ended(self) -> bool:
@@ -150,3 +169,7 @@ class IsolationPolicy(metaclass=ABCMeta):
     def set_idle_isolator(self) -> None:
         self._cur_isolator.yield_isolation()
         self._cur_isolator = IsolationPolicy._IDLE_ISOLATOR
+
+    def reset(self) -> None:
+        for isolator in self._isolator_map.values():
+            isolator.reset()

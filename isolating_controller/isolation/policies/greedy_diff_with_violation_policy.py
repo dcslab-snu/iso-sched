@@ -4,7 +4,7 @@ import logging
 
 from .greedy_diff_policy import GreedyDiffPolicy
 from .. import ResourceType
-from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
 from ...workload import Workload
 
 
@@ -22,7 +22,7 @@ class GreedyDiffWViolationPolicy(GreedyDiffPolicy):
         return \
             resource is ResourceType.CACHE and not isinstance(self._cur_isolator, CacheIsolator) \
             or resource is ResourceType.MEMORY and (not isinstance(self._cur_isolator, MemoryIsolator)
-                                                    and not isinstance(self._cur_isolator, SchedIsolator))
+                                                    and not isinstance(self._cur_isolator, CoreIsolator))
 
     @property
     def new_isolator_needed(self) -> bool:

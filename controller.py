@@ -143,7 +143,7 @@ class ControlThread(Thread):
     def _isolate_workloads(self) -> None:
         logger = logging.getLogger(__name__)
 
-        # self._swapper.try_swap()
+        self._swapper.try_swap()
 
         for group, iteration_num in self._isolation_groups.items():
             logger.info('')
@@ -208,6 +208,7 @@ class ControlThread(Thread):
             logger.info(f'{group} of {ended_workload.name} is ended')
 
             # remove from containers
+            group.reset()
             del self._isolation_groups[group]
 
     def run(self) -> None:

@@ -142,7 +142,7 @@ class CoreIsolator(Isolator):
 
         # FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
         # FIXME: hard coded (contiguous allocation)
-        if fg_instruction_ps > 0 and self._foreground_wl.orig_bound_cores[-1] < self._cur_fg_step:
+        if fg_instruction_ps > -.5 and self._foreground_wl.orig_bound_cores[-1] < self._cur_fg_step:
             self._fg_next_step = NextStep.STRENGTHEN
         else:
             self._fg_next_step = NextStep.IDLE
@@ -159,7 +159,7 @@ class CoreIsolator(Isolator):
             self._bg_next_step = NextStep.STRENGTHEN
 
         # FIXME: hard coded (contiguous allocation)
-        if fg_instruction_ps < 0 \
+        if fg_instruction_ps < -.5 \
                 and (self._bg_next_step is NextStep.STRENGTHEN or self._cur_bg_step - self._cur_fg_step > 1):
             self._fg_next_step = NextStep.WEAKEN
         else:

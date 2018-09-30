@@ -45,7 +45,7 @@ class GreedyDiffPolicy(IsolationPolicy):
             self._cur_isolator = self._isolator_map[CoreIsolator]
             self._cur_isolator._contentious_resource = ResourceType.MEMORY
             self._is_mem_isolated = False
-            logger.info(f'Cpuset Isolation for {self._fg_wl} is started to isolate {ResourceType.MEMORY.name} BW')
+            logger.info(f'Core Isolation for {self._fg_wl} is started to isolate {ResourceType.MEMORY.name} BW')
             return True
 
         else:

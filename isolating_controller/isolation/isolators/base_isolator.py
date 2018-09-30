@@ -91,3 +91,10 @@ class Isolator(metaclass=ABCMeta):
     def reset(self) -> None:
         """Restore to initial configuration"""
         pass
+
+    def change_fg_wl(self, new_workload: Workload) -> None:
+        self._foreground_wl = new_workload
+        self._prev_metric_diff = new_workload.calc_metric_diff()
+
+    def change_bg_wl(self, new_workload: Workload) -> None:
+        self._background_wl = new_workload

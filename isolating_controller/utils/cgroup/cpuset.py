@@ -24,8 +24,12 @@ class CpuSet(BaseCgroup):
 
     def read_cpus(self) -> Set[int]:
         cpus = subprocess.check_output(args=('cgget', '-nvr', 'cpuset.cpus', self._group_name), encoding='ASCII')
+        if cpus is '':
+            raise ProcessLookupError()
         return convert_to_set(cpus)
 
     def read_mems(self) -> Set[int]:
-        cpus = subprocess.check_output(args=('cgget', '-nvr', 'cpuset.mems', self._group_name), encoding='ASCII')
-        return convert_to_set(cpus)
+        mems = subprocess.check_output(args=('cgget', '-nvr', 'cpuset.mems', self._group_name), encoding='ASCII')
+        if mems is '':
+            raise ProcessLookupError()
+        return convert_to_set(mems)

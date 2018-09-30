@@ -139,6 +139,12 @@ class Workload:
 
         # FIXME: hard coded
         if len(sockets) is not 1:
-            raise NotImplementedError('Workload spans multiple sockets.')
+            raise NotImplementedError(f'Workload spans multiple sockets. {sockets}')
         else:
             return next(iter(sockets))
+
+    def pause(self) -> None:
+        self._proc_info.suspend()
+
+    def resume(self) -> None:
+        self._proc_info.resume()
