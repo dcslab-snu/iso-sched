@@ -32,14 +32,13 @@ class GreedyDiffPolicy(IsolationPolicy):
 
         elif resource is ResourceType.CACHE:
             self._cur_isolator = self._isolator_map[CacheIsolator]
-            logger.info(f'Cache Isolation for {self._fg_wl} is started to isolate {ResourceType.CACHE.name}s')
+            logger.info(f'Cache Isolation for {self._fg_wl} is started')
             return True
 
         elif not self._is_mem_isolated and resource is ResourceType.MEMORY:
             self._cur_isolator = self._isolator_map[MemoryIsolator]
             self._is_mem_isolated = True
-            logger.info(f'Memory Bandwidth Isolation for {self._fg_wl} is started '
-                        f'to isolate {ResourceType.MEMORY.name} BW')
+            logger.info(f'Memory Bandwidth Isolation for {self._fg_wl} is started')
             return True
 
         elif resource is ResourceType.MEMORY:
