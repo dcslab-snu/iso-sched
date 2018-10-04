@@ -5,6 +5,7 @@ from itertools import chain
 from typing import Deque, Iterable, Set, Tuple
 
 import psutil
+import logging
 
 from .metric_container.basic_metric import BasicMetric, MetricDiff
 from .solorun_data.datas import data_map
@@ -28,11 +29,17 @@ class Workload:
         self._perf_interval = perf_interval
 
         self._proc_info = psutil.Process(pid)
+        self._perf_info = psutil.Process(perf_pid)
         self._inst_diff: float = None
 
         self._cgroup_cpuset = CpuSet(self.group_name)
         self._cgroup_cpu = Cpu(self.group_name)
         self._resctrl = ResCtrl(self.group_name)
+
+        self._profile_solorun: bool = False
+        self._solorun_data_queue: Deque[BasicMetric] = deque() # This queue is used to collect and calculate avg. status
+        self._avg_solorun_data: BasicMetric = None             # This variable is used to contain the recent avg. status
+        self._prev_num_threads: int = None
 
         self._orig_bound_cores: Tuple[int, ...] = tuple(self._cgroup_cpuset.read_cpus())
         self._orig_bound_mems: Set[int] = self._cgroup_cpuset.read_mems()
@@ -123,10 +130,45 @@ class Workload:
     def number_of_threads(self) -> int:
         return self._proc_info.num_threads()
 
-    def calc_metric_diff(self) -> MetricDiff:
-        solorun_data = data_map[self.name]
-        curr_metric: BasicMetric = self._metrics[0]
+    @property
+    def prev_num_threads(self) -> int:
+        return self._prev_num_threads
 
+    def update_num_threads(self) -> None:
+        self._prev_num_threads = self._proc_info.num_threads()
+
+    @property
+    def profile_solorun(self) -> bool:
+        return self._profile_solorun
+
+    @profile_solorun.setter
+    def profile_solorun(self, new_flag: bool) -> None:
+        self._profile_solorun = new_flag
+
+    @property
+    def solorun_data_queue(self) -> Deque[BasicMetric]:
+        return self._solorun_data_queue
+
+    @property
+    def avg_solorun_data(self) -> BasicMetric:
+        return self._avg_solorun_data
+
+    def calc_avg_solorun(self) -> None:
+        counts = 0
+        sum_of_items = BasicMetric()
+        for item in self.solorun_data_queue:
+            sum_of_items += item
+            counts += 1
+        self._avg_solorun_data = sum_of_items / counts
+
+    def calc_metric_diff(self) -> MetricDiff:
+        logger=logging.getLogger(__name__)
+        #solorun_data = data_map[self.name]
+        if self._avg_solorun_data is not None:
+            solorun_data = self._avg_solorun_data
+        else:
+            solorun_data = data_map[self.name]
+        curr_metric: BasicMetric = self._metrics[0]
         return MetricDiff(curr_metric, solorun_data)
 
     def all_child_tid(self) -> Tuple[int, ...]:
@@ -152,3 +194,20 @@ class Workload:
 
     def resume(self) -> None:
         self._proc_info.resume()
+
+    def pause_perf(self) -> None:
+        self._perf_info.suspend()
+
+    def resume_perf(self) -> None:
+        self._perf_info.resume()
+
+    def is_num_threads_changed(self) -> bool:
+        """
+        Detecting the phase changes based on the changes in the number of threads
+        :return:
+        """
+        cur_num_threads = self.number_of_threads
+        if self._prev_num_threads == cur_num_threads:
+            return False
+        else:
+            return True

@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Dict, Type
 
 from .. import ResourceType
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
+from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator
 from ...metric_container.basic_metric import BasicMetric, MetricDiff
 from ...workload import Workload
 
@@ -39,7 +39,6 @@ class IsolationPolicy(metaclass=ABCMeta):
             (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
             (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
             (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl)),
-            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl))
         ))
 
     @property
@@ -57,7 +56,7 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         logger = logging.getLogger(__name__)
         logger.info(repr(metric_diff))
-        logger.info(f'l3_int: {cur_metric.l3_intensity}, mem_int: {cur_metric.mem_intensity}')
+        logger.info(f'l3_int: {cur_metric.l3_intensity}, mem_int: {cur_metric.mem_intensity}, llc_util: {cur_metric.l3_util}')
         if abs(cur_metric.l3_intensity) < IsolationPolicy._CPU_THRESHOLD \
                 and abs(cur_metric.mem_intensity) < IsolationPolicy._CPU_THRESHOLD:
             return ResourceType.CPU

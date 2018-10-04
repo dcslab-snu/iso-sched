@@ -1,15 +1,18 @@
 # coding: UTF-8
 
+from __future__ import division
+
 from time import localtime, strftime
 
 from cpuinfo import cpuinfo
+
 
 LLC_SIZE = int(cpuinfo.get_cpu_info()['l3_cache_size'].split()[0]) * 1024
 
 
 class BasicMetric:
-    def __init__(self, l2miss, l3miss, inst, cycles, stall_cycles, wall_cycles, intra_coh, inter_coh, llc_size,
-                 local_mem, remote_mem, interval: int):
+    def __init__(self, l2miss=0, l3miss=0, inst=0, cycles=0, stall_cycles=0, wall_cycles=0, intra_coh=0,
+                 inter_coh=0, llc_size=0, local_mem=0, remote_mem=0, interval: int=1000):
         self._l2miss = l2miss
         self._l3miss = l3miss
         self._instructions = inst
@@ -39,6 +42,10 @@ class BasicMetric:
     @property
     def instruction_ps(self):
         return self._instructions * (1000 / self._interval)
+
+    @property
+    def wall_cycles(self):
+        return self._wall_cycles
 
     @property
     def cycles(self):
@@ -114,10 +121,39 @@ class BasicMetric:
     def mem_intensity(self) -> float:
         return self.llc_util * self.l3miss_ratio
 
+    @property
+    def l3_util(self) -> float:
+        return self.llc_util
+
     def __repr__(self) -> str:
         return ', '.join(map(str, (
             self._l2miss, self._l3miss, self._instructions, self._cycles, self._stall_cycles,
             self._intra_coh, self._inter_coh, self._llc_size, self._req_date)))
+
+    def __add__(self, others):
+        self._l2miss = self.l2miss + others.l2miss
+        self._l3miss = self.l3miss + others.l3miss
+        self._instructions = self.instruction + others.instruction
+        self._wall_cycles = self.wall_cycles + others.wall_cycles
+        self._stall_cycles = self.stall_cycle + others.stall_cycle
+        self._intra_coh = self.intra_coh + others.intra_coh
+        self._inter_coh = self.inter_coh + others.inter_coh
+        self._llc_size = self.llc_size + others.llc_size
+        self._local_mem = self.local_mem + others.local_mem
+        self._remote_mem = self.remote_mem + others.remote_mem
+
+    def __truediv__(self, other):
+        self._l2miss /= other
+        self._l3miss /= other
+        self._instructions /= other
+        self._wall_cycles /= other
+        self._cycles /= other
+        self._stall_cycles /= other
+        self._intra_coh /= other
+        self._inter_coh /= other
+        self._llc_size /= other
+        self._local_mem /= other
+        self._remote_mem /= other
 
 
 class MetricDiff:

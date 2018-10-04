@@ -25,6 +25,7 @@ from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 from pending_queue import PendingQueue
 from swap_iso import SwapIsolator
+from proc_arbitrator import ProcessArbitrator
 
 MIN_PYTHON = (3, 6)
 
@@ -102,7 +103,17 @@ class MainController(metaclass=Singleton):
         logger = logging.getLogger(f'monitoring.metric.{workload}')
         logger.debug(f'{metric} is given from ')
 
-        metric_que = workload.metrics
+        metric_que = None
+        if not workload.profile_solorun:
+            logger.debug(f'Metric_queue : workload.metrics')
+            # TODO: Do we need clear()?
+            metric_que = workload.metrics
+        elif workload.profile_solorun:
+            logger.debug(f'Metric_queue : workload.profile_solorun')
+            # init the solorun_data_queue
+            workload.solorun_data_queue.clear()
+            # suspend ALL BGs in the same socket
+            metric_que = workload.solorun_data_queue
 
         if len(metric_que) == self._metric_buf_size:
             metric_que.pop()
@@ -135,7 +146,9 @@ class ControlThread(Thread):
 
         self._pending_queue: PendingQueue = pending_queue
 
-        self._interval: float = 0.2  # Scheduling interval
+        self._interval: float = 0.2  # scheduling interval (sec)
+        self._profile_interval: float = 1.0 # check interval for phase change (sec)
+        self._solorun_interval: float = 2.0 # the FG's solorun profiling interval (sec)
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
         # Swapper init
         self._swapper: SwapIsolator = SwapIsolator(self._isolation_groups)
@@ -211,16 +224,84 @@ class ControlThread(Thread):
             group.reset()
             del self._isolation_groups[group]
 
+    def _profile_solorun(self) -> None:
+        """
+        profile solorun status of a workload
+        :return:
+        """
+        all_fg_wls = list()
+        all_bg_wls = list()
+        # suspend all workloads and their perf agents
+        for group in self._isolation_groups:
+            fg_wl = group.foreground_workload
+            bg_wl = group.background_workload
+            fg_wl.pause()
+            fg_wl.pause_perf()
+            bg_wl.pause()
+            bg_wl.pause_perf()
+            all_fg_wls.append(fg_wl)
+            all_bg_wls.append(bg_wl)
+
+        # run FG workloads alone
+        for fg_wl in all_fg_wls:
+            fg_wl.profile_solorun = True
+            fg_wl.resume()
+            fg_wl.resume_perf()
+
+        # four seconds for monitoring solo-run
+        time.sleep(self._solorun_interval)
+
+        # disable solorun mode
+        for fg_wl in all_fg_wls:
+            fg_wl.profile_solorun = False
+
+        # resume BG workloads
+        for bg_wl in all_bg_wls:
+            bg_wl.resume()
+            bg_wl.resume_perf()
+
+    def _update_all_workloads_num_threads(self):
+        """
+        update the workloads' number of threads (cur_num_threads -> prev_num_threads)
+        :return:
+        """
+        for group in self._isolation_groups:
+            bg_wl = group.background_workload
+            fg_wl = group.foreground_workload
+            bg_wl.update_num_threads()
+            fg_wl.update_num_threads()
+
+    def _profile_needed(self, count: int) -> bool:
+        """
+        This function checks if the profiling procedure should be called
+
+        profile_freq : the frequencies of online profiling
+        :param count: This counts the number of entering the run func. loop
+        :return: Decision whether to initiate online solorun profiling
+        """
+
+        profile_freq = int(self._profile_interval/self._interval)
+        for group in self._isolation_groups:
+            fg_wl = group.foreground_workload
+            if count % profile_freq != 0 and fg_wl.is_num_threads_changed():
+                self._update_all_workloads_num_threads()
+                return False
+            else:
+                self._update_all_workloads_num_threads()
+                return True
+
     def run(self) -> None:
         logger = logging.getLogger(__name__)
         logger.info('starting isolation loop')
-
+        count = 0
         while True:
             self._remove_ended_groups()
             self._register_pending_workloads()
 
             time.sleep(self._interval)
-
+            count += 1
+            if self._profile_needed(count):
+                self._profile_solorun()
             self._isolate_workloads()
 
 
@@ -231,7 +312,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    stream_handler = logging.StreamHandler()
+    #stream_handler = logging.StreamHandler()
+    stream_handler = logging.FileHandler('debug.log')
     stream_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s'))
 
     controller_logger = logging.getLogger(__name__)

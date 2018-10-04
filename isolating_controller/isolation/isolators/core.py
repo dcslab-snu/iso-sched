@@ -10,6 +10,7 @@ from ...workload import Workload
 class CoreIsolator(Isolator):
     _DOD_THRESHOLD = 0.005
     _FORCE_THRESHOLD = 0.1
+    _INST_PS_THRESHOLD = -0.5
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
@@ -135,14 +136,25 @@ class CoreIsolator(Isolator):
             return self._strengthen_condition(metric_diff.instruction_ps)
 
     def _weaken_condition(self, fg_instruction_ps: float) -> NextStep:
-        if self._cur_bg_step == self._background_wl.orig_bound_cores[0]:
-            self._bg_next_step = NextStep.IDLE
-        else:
-            self._bg_next_step = NextStep.WEAKEN
+        fg_not_used_cores = len(self._foreground_wl.bound_cores) - self._foreground_wl.number_of_threads
+        # BG Next Step Decision
+        # ResourceType.CPU - If FG workload not fully use all its assigned cores..., then BG can weaken!
+        if self._contentious_resource == ResourceType.CPU:
+            if fg_not_used_cores == 0:
+                self._bg_next_step = NextStep.IDLE
+            elif fg_not_used_cores > 0:
+                self._bg_next_step = NextStep.WEAKEN
+        # ResourceType.MEMORY - If BG workload was strengthened than its assigned cores, then BG can weaken!
+        elif self._contentious_resource == ResourceType.MEMORY:
+            if self._cur_bg_step == self._background_wl.orig_bound_cores[0]:
+                self._bg_next_step = NextStep.IDLE
+            else:
+                self._bg_next_step = NextStep.WEAKEN
 
         # FIXME: Specifying fg's strengthen/weaken condition (related to fg's performance)
         # FIXME: hard coded (contiguous allocation)
-        if fg_instruction_ps > -.5 and self._foreground_wl.orig_bound_cores[-1] < self._cur_fg_step:
+        # FG Next Step Decision
+        if fg_instruction_ps > self._INST_PS_THRESHOLD and self._foreground_wl.orig_bound_cores[-1] < self._cur_fg_step:
             self._fg_next_step = NextStep.STRENGTHEN
         else:
             self._fg_next_step = NextStep.IDLE
@@ -153,14 +165,31 @@ class CoreIsolator(Isolator):
             return NextStep.WEAKEN
 
     def _strengthen_condition(self, fg_instruction_ps: float) -> NextStep:
-        if self._cur_bg_step == self._background_wl.orig_bound_cores[-1]:
-            self._bg_next_step = NextStep.IDLE
-        else:
-            self._bg_next_step = NextStep.STRENGTHEN
+        logger = logging.getLogger(__name__)
+
+        # BG Next Step Decision
+        # ResourceType.CPU - If FG workload shows low performance and FG's threads are larger than its assigned cores,
+        # then BG can strengthen!
+        if self._contentious_resource == ResourceType.CPU:
+            if fg_instruction_ps > self._INST_PS_THRESHOLD:
+                self._bg_next_step = NextStep.IDLE
+            elif fg_instruction_ps <= self._INST_PS_THRESHOLD and \
+                    self._foreground_wl.number_of_threads > len(self._foreground_wl.bound_cores):
+                self._bg_next_step = NextStep.STRENGTHEN
+        # ResourceType.MEMORY - If BG workload can strengthen its cores... , then strengthen BG's cores!
+        elif self._contentious_resource == ResourceType.MEMORY:
+            if self._cur_bg_step == self._background_wl.orig_bound_cores[-1]:
+                self._bg_next_step = NextStep.IDLE
+            else:
+                self._bg_next_step = NextStep.STRENGTHEN
 
         # FIXME: hard coded (contiguous allocation)
-        if fg_instruction_ps < -.5 \
-                and (self._bg_next_step is NextStep.STRENGTHEN or self._cur_bg_step - self._cur_fg_step > 1):
+        # FG Next Step Decision
+        logger.debug(f'FG threads: {self._foreground_wl.number_of_threads}, '
+                     f'orig_bound_cores: {self._foreground_wl.orig_bound_cores}')
+        if fg_instruction_ps < self._INST_PS_THRESHOLD \
+                and (self._bg_next_step is NextStep.STRENGTHEN or self._cur_bg_step - self._cur_fg_step > 1) \
+                and self._foreground_wl.number_of_threads > len(self._foreground_wl.orig_bound_cores):
             self._fg_next_step = NextStep.WEAKEN
         else:
             self._fg_next_step = NextStep.IDLE

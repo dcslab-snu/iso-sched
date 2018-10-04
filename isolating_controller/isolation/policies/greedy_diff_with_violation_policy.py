@@ -23,7 +23,7 @@ class GreedyDiffWViolationPolicy(GreedyDiffPolicy):
             resource is ResourceType.CPU and not isinstance(self._cur_isolator, CoreIsolator) \
             or resource is ResourceType.CACHE and not isinstance(self._cur_isolator, CacheIsolator) \
             or resource is ResourceType.MEMORY and (not isinstance(self._cur_isolator, MemoryIsolator)
-                                                    and not isinstance(self._cur_isolator, SchedIsolator))
+                                                    and not isinstance(self._cur_isolator, CoreIsolator))
 
     @property
     def new_isolator_needed(self) -> bool:
