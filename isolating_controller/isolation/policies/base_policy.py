@@ -1,7 +1,7 @@
 # coding: UTF-8
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Type
+from typing import Dict, Type, Any
 
 from .. import ResourceType
 from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator
@@ -22,6 +22,8 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
         self._aggr_inst_diff: float = None
+        self._isolator_configs: Dict[Type[Isolator], Any] = dict()
+        self._profile_stop_cond: int = None  # the count to stop solorun profiling condition
 
     def __hash__(self) -> int:
         return id(self)
@@ -56,7 +58,8 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         logger = logging.getLogger(__name__)
         logger.info(repr(metric_diff))
-        logger.info(f'l3_int: {cur_metric.l3_intensity}, mem_int: {cur_metric.mem_intensity}, llc_util: {cur_metric.l3_util}')
+        logger.info(f'l3_int: {cur_metric.l3_intensity}, mem_int: {cur_metric.mem_intensity}, '
+                    f'llc_util: {cur_metric.l3_util}')
         if abs(cur_metric.l3_intensity) < IsolationPolicy._CPU_THRESHOLD \
                 and abs(cur_metric.mem_intensity) < IsolationPolicy._CPU_THRESHOLD:
             return ResourceType.CPU
@@ -173,3 +176,114 @@ class IsolationPolicy(metaclass=ABCMeta):
     def reset(self) -> None:
         for isolator in self._isolator_map.values():
             isolator.reset()
+
+    def store_cur_configs(self) -> None:
+        for isotype, isolator in self._isolator_map.items():
+            isolator.store_cur_config()
+            self._isolator_configs[isotype] = isolator.load_cur_config
+
+    def reset_stored_configs(self) -> None:
+        """
+        Reset stored configs
+        """
+        # Cpuset (Cpuset)
+        cpuset_config = self._isolator_configs[CoreIsolator]
+        fg_cpuset, bg_cpuset = cpuset_config
+        self._fg_wl.cgroup_cpuset.assign_cpus(fg_cpuset)
+        self._bg_wl.cgroup_cpuset.assign_cpus(bg_cpuset)
+
+        # DVFS (Dict(cpuid, freq))
+        dvfs_config = self._isolator_configs[MemoryIsolator]
+        fg_dvfs_config, bg_dvfs_config = dvfs_config
+        fg_cpuset = fg_dvfs_config.keys()
+        fg_cpufreq = fg_dvfs_config.values()
+        fg_dvfs = self._fg_wl.dvfs
+        for fg_cpu in fg_cpuset:
+            freq = fg_cpufreq[fg_cpu]
+            fg_dvfs.set_freq(freq, fg_cpu)
+
+        bg_cpuset = bg_dvfs_config.keys()
+        bg_cpufreq = bg_dvfs_config.values()
+        bg_dvfs = self._bg_wl.dvfs
+        for bg_cpu in bg_cpuset:
+            freq = bg_cpufreq[bg_cpu]
+            bg_dvfs.set_freq(freq, bg_cpu)
+
+        # ResCtrl (Mask)
+        resctrl_config = self._isolator_configs[CacheIsolator]
+        fg_mask, bg_mask = resctrl_config
+        self._fg_wl.resctrl.assign_llc(fg_mask)
+        self._bg_wl.resctrl.assign_llc(bg_mask)
+
+    def profile_solorun(self) -> None:
+        """
+        profile solorun status of a workload
+        :return:
+        """
+        # suspend all workloads and their perf agents
+        all_fg_wls = list()
+        all_bg_wls = list()
+        fg_wl = self.foreground_workload
+        bg_wl = self.background_workload
+        fg_wl.pause()
+        fg_wl.pause_perf()
+        bg_wl.pause()
+        bg_wl.pause_perf()
+        all_fg_wls.append(fg_wl)
+        all_bg_wls.append(bg_wl)
+
+        # run FG workloads alone
+        for fg_wl in all_fg_wls:
+            fg_wl.profile_solorun = True
+            fg_wl.resume()
+            fg_wl.resume_perf()
+
+    def _update_all_workloads_num_threads(self):
+        """
+        update the workloads' number of threads (cur_num_threads -> prev_num_threads)
+        :return:
+        """
+        bg_wl = self.background_workload
+        fg_wl = self.foreground_workload
+        bg_wl.update_num_threads()
+        fg_wl.update_num_threads()
+
+    def profile_needed(self, profile_interval, schedule_interval, count: int) -> bool:
+        """
+        This function checks if the profiling procedure should be called
+
+        profile_freq : the frequencies of online profiling
+        :param profile_interval: the frequency of attempting profiling solorun
+        :param schedule_interval: the frequency of scheduling (isolation)
+        :param count: This counts the number of entering the run func. loop
+        :return: Decision whether to initiate online solorun profiling
+        """
+
+        profile_freq = int(profile_interval/schedule_interval)
+        fg_wl = self.foreground_workload
+        if count % profile_freq != 0 and fg_wl.is_num_threads_changed():
+            self._update_all_workloads_num_threads()
+            return False
+        else:
+            self._update_all_workloads_num_threads()
+            return True
+
+    @property
+    def profile_stop_cond(self) -> int:
+        return self._profile_stop_cond
+
+    @profile_stop_cond.setter
+    def profile_stop_cond(self, new_count: int) -> None:
+        self._profile_stop_cond = new_count
+
+    def all_workload_pause(self):
+        self._fg_wl.pause()
+        self._fg_wl.pause_perf()
+        self._bg_wl.pause()
+        self._bg_wl.pause_perf()
+
+    def all_workload_resume(self):
+        self._fg_wl.resume()
+        self._fg_wl.resume_perf()
+        self._bg_wl.resume()
+        self._bg_wl.resume_perf()

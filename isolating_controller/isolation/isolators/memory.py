@@ -2,6 +2,7 @@
 
 import logging
 
+from typing import Tuple, Dict
 from .base_isolator import Isolator
 from .. import NextStep
 from ...utils import DVFS
@@ -17,6 +18,7 @@ class MemoryIsolator(Isolator):
 
         # FIXME: hard coded
         self._cur_step = DVFS.MAX
+        self._stored_config: Tuple[Dict[int, int], ...] = None
 
     def strengthen(self) -> 'MemoryIsolator':
         self._cur_step -= DVFS.STEP
@@ -86,3 +88,13 @@ class MemoryIsolator(Isolator):
 
     def reset(self) -> None:
         DVFS.set_freq(DVFS.MAX, self._background_wl.orig_bound_cores)
+
+    def store_cur_config(self) -> None:
+        fg_rapl_dvfs = self._foreground_wl.dvfs
+        bg_rapl_dvfs = self._background_wl.dvfs
+        fg_dvfs = fg_rapl_dvfs.cpufreq
+        bg_dvfs = bg_rapl_dvfs.cpufreq
+        self._stored_config = (fg_dvfs, bg_dvfs)
+
+    def load_cur_config(self):
+        return self._stored_config

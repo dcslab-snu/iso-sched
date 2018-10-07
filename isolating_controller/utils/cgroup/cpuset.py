@@ -9,6 +9,7 @@ from ..hyphen import convert_to_set
 
 
 class CpuSet(BaseCgroup):
+    MOUNT_POINT = '/sys/fs/cgroup/cpuset'
     CONTROLLER = 'cpuset'
 
     def assign_cpus(self, core_set: Iterable[int]) -> None:
@@ -33,3 +34,15 @@ class CpuSet(BaseCgroup):
         if mems is '':
             raise ProcessLookupError()
         return convert_to_set(mems)
+
+    def get_cpu_affinity_from_group(self) -> Set[int]:
+        with open(f'{CpuSet.MOUNT_POINT}/{self._group_name}/cpuset.cpus', "r") as fp:
+            line: str = fp.readline()
+            core_set: Set[int] = convert_to_set(line)
+        return core_set
+
+    def get_mem_affinity_from_group(self) -> Set[int]:
+        with open(f'{CpuSet.MOUNT_POINT}/{self._group_name}/cpuset.mems', "r") as fp:
+            line: str = fp.readline()
+            mem_set: Set[int] = convert_to_set(line)
+        return mem_set

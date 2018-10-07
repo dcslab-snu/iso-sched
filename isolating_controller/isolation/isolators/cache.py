@@ -1,7 +1,7 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 from .base_isolator import Isolator
 from .. import NextStep
@@ -18,6 +18,8 @@ class CacheIsolator(Isolator):
 
         self._prev_step: Optional[int] = None
         self._cur_step: Optional[int] = None
+
+        self._stored_config: Tuple[str, ...] = None
 
     def strengthen(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
@@ -124,3 +126,13 @@ class CacheIsolator(Isolator):
         if self._foreground_wl.is_running:
             masks[self._foreground_wl.cur_socket_id()] = ResCtrl.MAX_MASK
             self._foreground_wl.resctrl.assign_llc(*masks)
+
+    def store_cur_config(self) -> None:
+        fg_resctrl = self._foreground_wl.resctrl
+        fg_mask = fg_resctrl.get_llc_mask()
+        bg_resctrl = self._background_wl.resctrl
+        bg_mask = bg_resctrl.get_llc_mask()
+        self._stored_config = (fg_mask, bg_mask)
+
+    def load_cur_config(self):
+        return self._stored_config

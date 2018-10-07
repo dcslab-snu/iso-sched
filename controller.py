@@ -25,7 +25,6 @@ from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 from pending_queue import PendingQueue
 from swap_iso import SwapIsolator
-from proc_arbitrator import ProcessArbitrator
 
 MIN_PYTHON = (3, 6)
 
@@ -147,8 +146,9 @@ class ControlThread(Thread):
         self._pending_queue: PendingQueue = pending_queue
 
         self._interval: float = 0.2  # scheduling interval (sec)
-        self._profile_interval: float = 1.0 # check interval for phase change (sec)
-        self._solorun_interval: float = 2.0 # the FG's solorun profiling interval (sec)
+        self._count: int = 0         # scheduling counts
+        self._profile_interval: float = 1.0  # check interval for phase change (sec)
+        self._solorun_interval: float = 2.0  # the FG's solorun profiling interval (sec)
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
         # Swapper init
         self._swapper: SwapIsolator = SwapIsolator(self._isolation_groups)
@@ -159,6 +159,16 @@ class ControlThread(Thread):
         self._swapper.try_swap()
 
         for group, iteration_num in self._isolation_groups.items():
+            if group.profile_needed(self._profile_interval, self._interval, self._count):
+                group.store_cur_configs()
+                group.profile_solorun()
+                group.profile_stop_cond = self._count + int(self._solorun_interval/self._interval)
+            elif group.foreground_workload.profile_solorun is True and self._count > group.profile_stop_cond:
+                group.all_workload_pause()
+                group.foreground_workload.profile_solorun = False
+                group.reset_stored_configs()
+                group.all_workload_resume()
+
             logger.info('')
             logger.info(f'***************isolation of {group.name} #{iteration_num}***************')
 
@@ -293,15 +303,15 @@ class ControlThread(Thread):
     def run(self) -> None:
         logger = logging.getLogger(__name__)
         logger.info('starting isolation loop')
-        count = 0
+        # count = 0
         while True:
             self._remove_ended_groups()
             self._register_pending_workloads()
 
             time.sleep(self._interval)
-            count += 1
-            if self._profile_needed(count):
-                self._profile_solorun()
+            # count += 1
+            # if self._profile_needed(count):
+            #    self._profile_solorun()
             self._isolate_workloads()
 
 
@@ -312,7 +322,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    #stream_handler = logging.StreamHandler()
+    # stream_handler = logging.StreamHandler()
     stream_handler = logging.FileHandler('debug.log')
     stream_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s'))
 

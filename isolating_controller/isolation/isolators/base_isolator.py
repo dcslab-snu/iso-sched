@@ -98,3 +98,13 @@ class Isolator(metaclass=ABCMeta):
 
     def change_bg_wl(self, new_workload: Workload) -> None:
         self._background_wl = new_workload
+
+    @abstractmethod
+    def store_cur_config(self) -> None:
+        """Store the current configuration"""
+        pass
+
+    @abstractmethod
+    def load_cur_config(self) -> None:
+        """Load the current configuration"""
+        pass
