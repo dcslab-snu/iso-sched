@@ -180,7 +180,7 @@ class IsolationPolicy(metaclass=ABCMeta):
     def store_cur_configs(self) -> None:
         for isotype, isolator in self._isolator_map.items():
             isolator.store_cur_config()
-            self._isolator_configs[isotype] = isolator.load_cur_config
+            self._isolator_configs[isotype] = isolator.load_cur_config()
 
     def reset_stored_configs(self) -> None:
         """
@@ -188,13 +188,13 @@ class IsolationPolicy(metaclass=ABCMeta):
         """
         # Cpuset (Cpuset)
         cpuset_config = self._isolator_configs[CoreIsolator]
-        fg_cpuset, bg_cpuset = cpuset_config
+        (fg_cpuset, bg_cpuset) = cpuset_config
         self._fg_wl.cgroup_cpuset.assign_cpus(fg_cpuset)
         self._bg_wl.cgroup_cpuset.assign_cpus(bg_cpuset)
 
         # DVFS (Dict(cpuid, freq))
         dvfs_config = self._isolator_configs[MemoryIsolator]
-        fg_dvfs_config, bg_dvfs_config = dvfs_config
+        (fg_dvfs_config, bg_dvfs_config) = dvfs_config
         fg_cpuset = fg_dvfs_config.keys()
         fg_cpufreq = fg_dvfs_config.values()
         fg_dvfs = self._fg_wl.dvfs
@@ -211,7 +211,7 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         # ResCtrl (Mask)
         resctrl_config = self._isolator_configs[CacheIsolator]
-        fg_mask, bg_mask = resctrl_config
+        (fg_mask, bg_mask) = resctrl_config
         self._fg_wl.resctrl.assign_llc(fg_mask)
         self._bg_wl.resctrl.assign_llc(bg_mask)
 
@@ -258,10 +258,12 @@ class IsolationPolicy(metaclass=ABCMeta):
         :param count: This counts the number of entering the run func. loop
         :return: Decision whether to initiate online solorun profiling
         """
-
+        logger = logging.getLogger(__name__)
         profile_freq = int(profile_interval/schedule_interval)
         fg_wl = self.foreground_workload
-        if count % profile_freq != 0 and fg_wl.is_num_threads_changed():
+        logger.info(f'count: {count}, profile_freq: {profile_freq}, '
+                    f'fg_wl.is_num_threads_changed(): {fg_wl.is_num_threads_changed()}')
+        if count % profile_freq != 0 or not fg_wl.is_num_threads_changed():
             self._update_all_workloads_num_threads()
             return False
         else:

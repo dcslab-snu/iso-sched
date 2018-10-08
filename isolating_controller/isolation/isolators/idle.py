@@ -43,3 +43,6 @@ class IdleIsolator(Isolator):
 
     def store_cur_config(self) -> None:
         pass
+    
+    def load_cur_config(self):
+        pass

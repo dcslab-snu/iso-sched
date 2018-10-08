@@ -160,13 +160,19 @@ class ControlThread(Thread):
 
         for group, iteration_num in self._isolation_groups.items():
             if group.profile_needed(self._profile_interval, self._interval, self._count):
+                logger.info(f'store_cur_configs')
                 group.store_cur_configs()
-                group.profile_solorun()
                 group.profile_stop_cond = self._count + int(self._solorun_interval/self._interval)
+                logger.info(f'profile_solorun ({self._count} ~ {group.profile_stop_cond})')
+                group.profile_solorun()
             elif group.foreground_workload.profile_solorun is True and self._count > group.profile_stop_cond:
+                logger.info(f'all_workload_pause')
                 group.all_workload_pause()
+                logger.info(f'fg.profile_solorun = False')
                 group.foreground_workload.profile_solorun = False
+                logger.info(f'reset_stored_configs')
                 group.reset_stored_configs()
+                logger.info(f'all_workload_resume')
                 group.all_workload_resume()
 
             logger.info('')
@@ -200,6 +206,7 @@ class ControlThread(Thread):
 
             finally:
                 self._isolation_groups[group] += 1
+                self._count += 1
 
     def _register_pending_workloads(self) -> None:
         """

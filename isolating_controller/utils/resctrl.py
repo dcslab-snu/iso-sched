@@ -84,7 +84,7 @@ class ResCtrl:
         """
         proc = subprocess.Popen(['cat', f'{ResCtrl.MOUNT_POINT}/{self._group_name}/schemata'],
                                 stdout=subprocess.PIPE)
-        line = proc.communicate()[0]
+        line = proc.communicate()[0].decode()
         striped_schema_line = line.lstrip('L3:').split(';')
         socket_masks = list()
         for i, item in enumerate(striped_schema_line):
