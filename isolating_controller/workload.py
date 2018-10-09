@@ -134,7 +134,10 @@ class Workload:
 
     @property
     def number_of_threads(self) -> int:
-        return self._proc_info.num_threads()
+        try:
+            return self._proc_info.num_threads()
+        except psutil.NoSuchProcess:
+            return 0
 
     @property
     def prev_num_threads(self) -> int:
@@ -149,7 +152,10 @@ class Workload:
         self._thread_changed_before = new_val
 
     def update_num_threads(self) -> None:
-        self._prev_num_threads = self._proc_info.num_threads()
+        try:
+            self._prev_num_threads = self._proc_info.num_threads()
+        except psutil.NoSuchProcess:
+            self._prev_num_threads = 0
 
     @property
     def profile_solorun(self) -> bool:
@@ -170,7 +176,7 @@ class Workload:
     def calc_avg_solorun(self) -> None:
         logger = logging.getLogger(__name__)
         counts = 0
-        sum_of_items = BasicMetric()
+        sum_of_items = BasicMetric(interval=50)
         for item in self.solorun_data_queue:
             logger.info(f'item in solorun_data_queue : {item}')
             sum_of_items += item
