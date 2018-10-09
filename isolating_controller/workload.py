@@ -41,6 +41,7 @@ class Workload:
         self._solorun_data_queue: Deque[BasicMetric] = deque() # This queue is used to collect and calculate avg. status
         self._avg_solorun_data: BasicMetric = None             # This variable is used to contain the recent avg. status
         self._prev_num_threads: int = None
+        self._thread_changed_before: bool = False
 
         self._orig_bound_cores: Tuple[int, ...] = tuple(self._cgroup_cpuset.read_cpus())
         self._orig_bound_mems: Set[int] = self._cgroup_cpuset.read_mems()
@@ -139,6 +140,14 @@ class Workload:
     def prev_num_threads(self) -> int:
         return self._prev_num_threads
 
+    @property
+    def thread_changed_before(self) -> bool:
+        return self._thread_changed_before
+
+    @thread_changed_before.setter
+    def thread_changed_before(self, new_val) -> None:
+        self._thread_changed_before = new_val
+
     def update_num_threads(self) -> None:
         self._prev_num_threads = self._proc_info.num_threads()
 
@@ -159,21 +168,30 @@ class Workload:
         return self._avg_solorun_data
 
     def calc_avg_solorun(self) -> None:
+        logger = logging.getLogger(__name__)
         counts = 0
         sum_of_items = BasicMetric()
         for item in self.solorun_data_queue:
+            logger.info(f'item in solorun_data_queue : {item}')
             sum_of_items += item
+            logger.info(f'sum_of_items[{counts}] : {sum_of_items}')
             counts += 1
-        self._avg_solorun_data = sum_of_items / counts
+        logger.info(f'self.solorun_data_queue : {self.solorun_data_queue}')
+        logger.info(f'after sum, sum_of_items : {sum_of_items}')
+        self._avg_solorun_data = sum_of_items/counts
+        logger.info(f'after truediv, truediv_of_items : {self._avg_solorun_data}')
 
     def calc_metric_diff(self) -> MetricDiff:
-        logger=logging.getLogger(__name__)
+        logger = logging.getLogger(__name__)
         #solorun_data = data_map[self.name]
         if self._avg_solorun_data is not None:
             solorun_data = self._avg_solorun_data
         else:
             solorun_data = data_map[self.name]
         curr_metric: BasicMetric = self._metrics[0]
+        logger.info(f'solorun_data L3 hit ratio: {solorun_data.l3hit_ratio}, '
+                    f'Local Mem BW ps : {solorun_data.local_mem_ps()}, '
+                    f'Instruction ps. : {solorun_data.instruction_ps}')
         return MetricDiff(curr_metric, solorun_data)
 
     def all_child_tid(self) -> Tuple[int, ...]:
@@ -216,3 +234,5 @@ class Workload:
             return False
         else:
             return True
+
+

@@ -24,6 +24,8 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._aggr_inst_diff: float = None
         self._isolator_configs: Dict[Type[Isolator], Any] = dict()
         self._profile_stop_cond: int = None  # the count to stop solorun profiling condition
+        self._thread_changed: bool = False
+        self._fg_runs_alone: bool = False
 
     def __hash__(self) -> int:
         return id(self)
@@ -186,6 +188,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         """
         Reset stored configs
         """
+        logger = logging.getLogger(__name__)
         # Cpuset (Cpuset)
         cpuset_config = self._isolator_configs[CoreIsolator]
         (fg_cpuset, bg_cpuset) = cpuset_config
@@ -212,8 +215,10 @@ class IsolationPolicy(metaclass=ABCMeta):
         # ResCtrl (Mask)
         resctrl_config = self._isolator_configs[CacheIsolator]
         (fg_mask, bg_mask) = resctrl_config
-        self._fg_wl.resctrl.assign_llc(fg_mask)
-        self._bg_wl.resctrl.assign_llc(bg_mask)
+        logger.info(f'fg_mask: {fg_mask}, bg_mask: {bg_mask}')
+        logger.info(f'fg_path: {self._fg_wl.resctrl.MOUNT_POINT/self._fg_wl.group_name}')
+        self._fg_wl.resctrl.assign_llc(*fg_mask)
+        self._bg_wl.resctrl.assign_llc(*bg_mask)
 
     def profile_solorun(self) -> None:
         """
@@ -234,7 +239,9 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         # run FG workloads alone
         for fg_wl in all_fg_wls:
+            fg_wl.solorun_data_queue.clear()  # clear the prev. solorun data
             fg_wl.profile_solorun = True
+            self.fg_runs_alone = True
             fg_wl.resume()
             fg_wl.resume_perf()
 
@@ -263,11 +270,16 @@ class IsolationPolicy(metaclass=ABCMeta):
         fg_wl = self.foreground_workload
         logger.info(f'count: {count}, profile_freq: {profile_freq}, '
                     f'fg_wl.is_num_threads_changed(): {fg_wl.is_num_threads_changed()}')
-        if count % profile_freq != 0 or not fg_wl.is_num_threads_changed():
+
+        if fg_wl.is_num_threads_changed():
+            fg_wl.thread_changed_before = True
+
+        if count % profile_freq != 0 or not fg_wl.thread_changed_before:
             self._update_all_workloads_num_threads()
             return False
         else:
             self._update_all_workloads_num_threads()
+            fg_wl.thread_changed_before = False
             return True
 
     @property
@@ -289,3 +301,12 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._fg_wl.resume_perf()
         self._bg_wl.resume()
         self._bg_wl.resume_perf()
+        self.fg_runs_alone = False
+
+    @property
+    def fg_runs_alone(self) -> bool:
+        return self._fg_runs_alone
+
+    @fg_runs_alone.setter
+    def fg_runs_alone(self, new_val) -> None:
+        self._fg_runs_alone = new_val

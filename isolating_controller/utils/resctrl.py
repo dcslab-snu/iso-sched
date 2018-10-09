@@ -1,6 +1,7 @@
 # coding: UTF-8
 
 import re
+import logging
 import subprocess
 from pathlib import Path
 from typing import List, Tuple
@@ -46,8 +47,11 @@ class ResCtrl:
                        input=f'{pid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
 
     def assign_llc(self, *masks: str) -> None:
+        logger = logging.getLogger(__name__)
         masks = (f'{i}={mask}' for i, mask in enumerate(masks))
         mask = ';'.join(masks)
+        #subprocess.check_call('ls -ll /sys/fs/resctrl/', shell=True)
+        logger.info(f'mask: {mask}')
         subprocess.run(args=('sudo', 'tee', str(self._group_path / 'schemata')),
                        input=f'L3:{mask}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
 
@@ -84,8 +88,8 @@ class ResCtrl:
         """
         proc = subprocess.Popen(['cat', f'{ResCtrl.MOUNT_POINT}/{self._group_name}/schemata'],
                                 stdout=subprocess.PIPE)
-        line = proc.communicate()[0].decode()
-        striped_schema_line = line.lstrip('L3:').split(';')
+        line = proc.communicate()[0].decode().lstrip()
+        striped_schema_line = line.lstrip('L3:').rstrip('\n').split(';')
         socket_masks = list()
         for i, item in enumerate(striped_schema_line):
             mask = item.lstrip(f'{i}=')

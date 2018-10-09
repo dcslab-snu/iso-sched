@@ -110,7 +110,7 @@ class MainController(metaclass=Singleton):
         elif workload.profile_solorun:
             logger.debug(f'Metric_queue : workload.profile_solorun')
             # init the solorun_data_queue
-            workload.solorun_data_queue.clear()
+            #workload.solorun_data_queue.clear()
             # suspend ALL BGs in the same socket
             metric_que = workload.solorun_data_queue
 
@@ -163,15 +163,24 @@ class ControlThread(Thread):
                 logger.info(f'store_cur_configs')
                 group.store_cur_configs()
                 group.profile_stop_cond = self._count + int(self._solorun_interval/self._interval)
+                logger.info(f'reset_to_initial_configs')
+                group.reset()
                 logger.info(f'profile_solorun ({self._count} ~ {group.profile_stop_cond})')
                 group.profile_solorun()
+
             elif group.foreground_workload.profile_solorun is True and self._count > group.profile_stop_cond:
                 logger.info(f'all_workload_pause')
                 group.all_workload_pause()
+
                 logger.info(f'fg.profile_solorun = False')
                 group.foreground_workload.profile_solorun = False
+                logger.info(f'calc_and_update fg._avg_solorun_data')
+                #logger.info(f'fg_wl.solorun_data_queue: {group._fg_wl.solorun_data_queue}')
+                group.foreground_workload.calc_avg_solorun()
+                logger.info(f'fg_wl.avg_solorun_data: {group._fg_wl.avg_solorun_data}')
                 logger.info(f'reset_stored_configs')
                 group.reset_stored_configs()
+
                 logger.info(f'all_workload_resume')
                 group.all_workload_resume()
 
@@ -185,6 +194,10 @@ class ControlThread(Thread):
                 cur_isolator: Isolator = group.cur_isolator
 
                 decided_next_step: NextStep = cur_isolator.decide_next_step()
+
+                if group.fg_runs_alone is True:
+                    decided_next_step = NextStep.IDLE
+
                 logger.info(f'Monitoring Result : {decided_next_step.name}')
 
                 if decided_next_step is NextStep.STRENGTHEN:
@@ -342,7 +355,7 @@ def main() -> None:
     module_logger.addHandler(stream_handler)
 
     monitoring_logger = logging.getLogger('monitoring')
-    monitoring_logger.setLevel(logging.INFO)
+    monitoring_logger.setLevel(logging.DEBUG)
     monitoring_logger.addHandler(stream_handler)
 
     controller = MainController(args.buf_size)

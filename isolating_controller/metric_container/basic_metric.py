@@ -5,7 +5,7 @@ from __future__ import division
 from time import localtime, strftime
 
 from cpuinfo import cpuinfo
-
+from typing import Type
 
 LLC_SIZE = int(cpuinfo.get_cpu_info()['l3_cache_size'].split()[0]) * 1024
 
@@ -127,33 +127,37 @@ class BasicMetric:
 
     def __repr__(self) -> str:
         return ', '.join(map(str, (
-            self._l2miss, self._l3miss, self._instructions, self._cycles, self._stall_cycles,
-            self._intra_coh, self._inter_coh, self._llc_size, self._req_date)))
+            self._l2miss, self._l3miss, self._instructions, self._cycles, self._stall_cycles, self._wall_cycles,
+            self._intra_coh, self._inter_coh, self._llc_size, self._local_mem, self._remote_mem,
+            self._interval, self._req_date)))
 
-    def __add__(self, others):
+    def __iadd__(self, others):
         self._l2miss = self.l2miss + others.l2miss
         self._l3miss = self.l3miss + others.l3miss
         self._instructions = self.instruction + others.instruction
-        self._wall_cycles = self.wall_cycles + others.wall_cycles
+        self._cycles = self._cycles + others.cycles
         self._stall_cycles = self.stall_cycle + others.stall_cycle
+        self._wall_cycles = self.wall_cycles + others.wall_cycles
         self._intra_coh = self.intra_coh + others.intra_coh
         self._inter_coh = self.inter_coh + others.inter_coh
         self._llc_size = self.llc_size + others.llc_size
         self._local_mem = self.local_mem + others.local_mem
         self._remote_mem = self.remote_mem + others.remote_mem
+        return self
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: int):
         self._l2miss /= other
         self._l3miss /= other
         self._instructions /= other
-        self._wall_cycles /= other
         self._cycles /= other
         self._stall_cycles /= other
+        self._wall_cycles /= other
         self._intra_coh /= other
         self._inter_coh /= other
         self._llc_size /= other
         self._local_mem /= other
         self._remote_mem /= other
+        return self
 
 
 class MetricDiff:

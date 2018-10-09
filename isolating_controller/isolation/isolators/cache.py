@@ -64,7 +64,7 @@ class CacheIsolator(Isolator):
 
             # FIXME: hard coded -> The number of socket is two at most
             masks = [ResCtrl.MIN_MASK, ResCtrl.MIN_MASK]
-            masks[self._foreground_wl.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
+            masks[self._foreground_wl.cur_socket_id()] = ResCtrl.gen_mask(0, self._cur_step)
             self._foreground_wl.resctrl.assign_llc(*masks)
 
             # FIXME: hard coded -> The number of socket is two at most
