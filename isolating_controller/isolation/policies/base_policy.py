@@ -199,6 +199,8 @@ class IsolationPolicy(metaclass=ABCMeta):
             isolator.store_cur_config()
             isolator.reset()
 
+        self._fg_wl.resume()
+
     def stop_solorun_profiling(self) -> None:
         if not self._in_solorun_profile:
             raise ValueError('Start solorun profiling first!')
