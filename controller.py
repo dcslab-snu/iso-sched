@@ -345,23 +345,30 @@ def main() -> None:
     parser.add_argument('-b', '--metric-buf-size', dest='buf_size', default='50', type=int,
                         help='metric buffer size per thread. (default : 50)')
 
+    os.makedirs('logs', exist_ok=True)
+
     args = parser.parse_args()
 
-    # stream_handler = logging.StreamHandler()
-    stream_handler = logging.FileHandler('debug.log')
-    stream_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s'))
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s]: %(message)s')
+    stream_handler = logging.StreamHandler()
+    file_handler = logging.FileHandler(f'logs/debug_{datetime.datetime.now().isoformat()}.log')
+    stream_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
 
     controller_logger = logging.getLogger(__name__)
     controller_logger.setLevel(logging.INFO)
     controller_logger.addHandler(stream_handler)
+    controller_logger.addHandler(file_handler)
 
     module_logger = logging.getLogger(isolating_controller.__name__)
     module_logger.setLevel(logging.DEBUG)
     module_logger.addHandler(stream_handler)
+    module_logger.addHandler(file_handler)
 
     monitoring_logger = logging.getLogger('monitoring')
     monitoring_logger.setLevel(logging.DEBUG)
     monitoring_logger.addHandler(stream_handler)
+    monitoring_logger.addHandler(file_handler)
 
     controller = MainController(args.buf_size)
     controller.run()
