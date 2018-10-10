@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 
 from .base_isolator import Isolator
 from .. import NextStep
+from ...metric_container.basic_metric import MetricDiff
 from ...utils import ResCtrl, numa_topology
 from ...workload import Workload
 
@@ -19,7 +20,7 @@ class CacheIsolator(Isolator):
         self._prev_step: Optional[int] = None
         self._cur_step: Optional[int] = None
 
-        self._stored_config: Tuple[str, ...] = None
+        self._stored_config: Optional[Tuple[int, int]] = None
 
     def strengthen(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
@@ -72,8 +73,7 @@ class CacheIsolator(Isolator):
             masks[self._background_wl.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
             self._background_wl.resctrl.assign_llc(*masks)
 
-    def _first_decision(self) -> NextStep:
-        metric_diff = self._foreground_wl.calc_metric_diff()
+    def _first_decision(self, metric_diff: MetricDiff) -> NextStep:
         curr_diff = metric_diff.l3_hit_ratio
 
         logger = logging.getLogger(__name__)
@@ -93,11 +93,9 @@ class CacheIsolator(Isolator):
                 return NextStep.WEAKEN
 
     # TODO: consider turn off cache partitioning
-    def _monitoring_result(self) -> NextStep:
-        metric_diff = self._foreground_wl.calc_metric_diff()
-
-        curr_diff = metric_diff.l3_hit_ratio
-        prev_diff = self._prev_metric_diff.l3_hit_ratio
+    def _monitoring_result(self, prev_metric_diff: MetricDiff, cur_metric_diff: MetricDiff) -> NextStep:
+        curr_diff = cur_metric_diff.l3_hit_ratio
+        prev_diff = prev_metric_diff.l3_hit_ratio
         diff_of_diff = curr_diff - prev_diff
 
         logger = logging.getLogger(__name__)
@@ -128,11 +126,11 @@ class CacheIsolator(Isolator):
             self._foreground_wl.resctrl.assign_llc(*masks)
 
     def store_cur_config(self) -> None:
-        fg_resctrl = self._foreground_wl.resctrl
-        fg_mask = fg_resctrl.get_llc_mask()
-        bg_resctrl = self._background_wl.resctrl
-        bg_mask = bg_resctrl.get_llc_mask()
-        self._stored_config = (fg_mask, bg_mask)
+        self._stored_config = (self._prev_step, self._cur_step)
 
-    def load_cur_config(self):
-        return self._stored_config
+    def load_cur_config(self) -> None:
+        super().load_cur_config()
+
+        self._prev_step, self._cur_step = self._stored_config
+        self._enforce()
+        self._stored_config = None

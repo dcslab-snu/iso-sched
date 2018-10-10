@@ -1,10 +1,11 @@
 # coding: UTF-8
 
 import logging
-from typing import Set, Tuple
+from typing import Optional, Tuple
 
 from .base_isolator import Isolator
 from .. import NextStep, ResourceType
+from ...metric_container.basic_metric import MetricDiff
 from ...workload import Workload
 
 
@@ -25,7 +26,7 @@ class CoreIsolator(Isolator):
 
         self._contentious_resource: ResourceType = ResourceType.MEMORY
 
-        self._stored_config: Tuple[Set[int], ...] = None
+        self._stored_config: Optional[Tuple[int, int]] = None
 
     def strengthen(self) -> 'CoreIsolator':
         """
@@ -77,9 +78,8 @@ class CoreIsolator(Isolator):
         self._foreground_wl.bound_cores = range(self._foreground_wl.orig_bound_cores[0], self._cur_fg_step + 1)
         self._background_wl.bound_cores = range(self._cur_bg_step, self._background_wl.orig_bound_cores[-1] + 1)
 
-    def _first_decision(self) -> NextStep:
+    def _first_decision(self, metric_diff: MetricDiff) -> NextStep:
         curr_diff = None
-        metric_diff = self._foreground_wl.calc_metric_diff()
 
         if self._contentious_resource == ResourceType.MEMORY:
             curr_diff = metric_diff.local_mem_util_ps
@@ -105,20 +105,19 @@ class CoreIsolator(Isolator):
             else:
                 return self._weaken_condition(metric_diff.instruction_ps)
 
-    def _monitoring_result(self) -> NextStep:
+    def _monitoring_result(self, prev_metric_diff: MetricDiff, cur_metric_diff: MetricDiff) -> NextStep:
         logger = logging.getLogger(__name__)
         logger.info(f'self._contentious_resource: {self._contentious_resource.name}')
 
-        metric_diff = self._foreground_wl.calc_metric_diff()
         curr_diff = None
         diff_of_diff = None
         if self._contentious_resource == ResourceType.MEMORY:
-            curr_diff = metric_diff.local_mem_util_ps
-            prev_diff = self._prev_metric_diff.local_mem_util_ps
+            curr_diff = cur_metric_diff.local_mem_util_ps
+            prev_diff = prev_metric_diff.local_mem_util_ps
             diff_of_diff = curr_diff - prev_diff
         elif self._contentious_resource == ResourceType.CPU:
-            curr_diff = metric_diff.instruction_ps
-            prev_diff = self._prev_metric_diff.instruction_ps
+            curr_diff = cur_metric_diff.instruction_ps
+            prev_diff = prev_metric_diff.instruction_ps
             diff_of_diff = curr_diff - prev_diff
 
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
@@ -132,11 +131,11 @@ class CoreIsolator(Isolator):
 
         # Case2 : FG shows lower contention than solo-run -> Slower FG or Faster BG
         elif curr_diff > 0:
-            return self._weaken_condition(metric_diff.instruction_ps)
+            return self._weaken_condition(cur_metric_diff.instruction_ps)
 
         # Case3 : FG shows higher contention than solo-run
         else:
-            return self._strengthen_condition(metric_diff.instruction_ps)
+            return self._strengthen_condition(cur_metric_diff.instruction_ps)
 
     def _weaken_condition(self, fg_instruction_ps: float) -> NextStep:
         fg_not_used_cores = len(self._foreground_wl.bound_cores) - self._foreground_wl.number_of_threads
@@ -229,11 +228,11 @@ class CoreIsolator(Isolator):
             return False
 
     def store_cur_config(self) -> None:
-        fg_cgroup_cpuset = self._foreground_wl.cgroup_cpuset
-        bg_cgroup_cpuset = self._background_wl.cgroup_cpuset
-        fg_cpuset = fg_cgroup_cpuset.read_cpus()
-        bg_cpuset = bg_cgroup_cpuset.read_cpus()
-        self._stored_config = (fg_cpuset, bg_cpuset)
+        self._stored_config = (self._cur_fg_step, self._cur_bg_step)
 
-    def load_cur_config(self):
-        return self._stored_config
+    def load_cur_config(self) -> None:
+        super().load_cur_config()
+
+        self._cur_fg_step, self._cur_bg_step = self._stored_config
+        self._enforce()
+        self._stored_config = None

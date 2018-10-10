@@ -1,7 +1,6 @@
 # coding: UTF-8
 
 import subprocess
-from itertools import chain
 from pathlib import Path
 from typing import Dict, Iterable
 
@@ -27,8 +26,7 @@ class DVFS:
         :param target_freq: freq. to set to cgroup cpuset
         :return:
         """
-        cur_grp_cpuset = self._cur_cgroup.get_cpu_affinity_from_group()
-        DVFS.set_freq(target_freq, chain(cur_grp_cpuset))
+        DVFS.set_freq(target_freq, self._cur_cgroup.read_cpus())
 
     @property
     def cpufreq(self) -> Dict[int, int]:

@@ -1,10 +1,11 @@
 # coding: UTF-8
 
 import logging
-from typing import Dict, Tuple
+from typing import Optional
 
 from .base_isolator import Isolator
 from .. import NextStep
+from ...metric_container.basic_metric import MetricDiff
 from ...utils import DVFS
 from ...workload import Workload
 
@@ -17,8 +18,8 @@ class MemoryIsolator(Isolator):
         super().__init__(foreground_wl, background_wl)
 
         # FIXME: hard coded
-        self._cur_step = DVFS.MAX
-        self._stored_config: Tuple[Dict[int, int], ...] = None
+        self._cur_step: int = DVFS.MAX
+        self._stored_config: Optional[int] = None
 
     def strengthen(self) -> 'MemoryIsolator':
         self._cur_step -= DVFS.STEP
@@ -44,8 +45,7 @@ class MemoryIsolator(Isolator):
 
         DVFS.set_freq(self._cur_step, self._background_wl.bound_cores)
 
-    def _first_decision(self) -> NextStep:
-        metric_diff = self._foreground_wl.calc_metric_diff()
+    def _first_decision(self, metric_diff: MetricDiff) -> NextStep:
         curr_diff = metric_diff.local_mem_util_ps
 
         logger = logging.getLogger(__name__)
@@ -64,11 +64,9 @@ class MemoryIsolator(Isolator):
             else:
                 return NextStep.WEAKEN
 
-    def _monitoring_result(self) -> NextStep:
-        metric_diff = self._foreground_wl.calc_metric_diff()
-
-        curr_diff = metric_diff.local_mem_util_ps
-        prev_diff = self._prev_metric_diff.local_mem_util_ps
+    def _monitoring_result(self, prev_metric_diff: MetricDiff, cur_metric_diff: MetricDiff) -> NextStep:
+        curr_diff = cur_metric_diff.local_mem_util_ps
+        prev_diff = prev_metric_diff.local_mem_util_ps
         diff_of_diff = curr_diff - prev_diff
 
         logger = logging.getLogger(__name__)
@@ -90,11 +88,11 @@ class MemoryIsolator(Isolator):
         DVFS.set_freq(DVFS.MAX, self._background_wl.orig_bound_cores)
 
     def store_cur_config(self) -> None:
-        fg_rapl_dvfs = self._foreground_wl.dvfs
-        bg_rapl_dvfs = self._background_wl.dvfs
-        fg_dvfs = fg_rapl_dvfs.cpufreq
-        bg_dvfs = bg_rapl_dvfs.cpufreq
-        self._stored_config = (fg_dvfs, bg_dvfs)
+        self._stored_config = self._cur_step
 
-    def load_cur_config(self):
-        return self._stored_config
+    def load_cur_config(self) -> None:
+        super().load_cur_config()
+
+        self._cur_step = self._stored_config
+        self._enforce()
+        self._stored_config = None

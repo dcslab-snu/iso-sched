@@ -1,8 +1,7 @@
 # coding: UTF-8
 
-from __future__ import division
-
-from time import localtime, strftime
+from statistics import mean
+from typing import Iterable
 
 from cpuinfo import cpuinfo
 
@@ -10,21 +9,37 @@ LLC_SIZE = int(cpuinfo.get_cpu_info()['l3_cache_size'].split()[0]) * 1024
 
 
 class BasicMetric:
-    def __init__(self, l2miss=0, l3miss=0, inst=0, cycles=0, stall_cycles=0, wall_cycles=0, intra_coh=0,
-                 inter_coh=0, llc_size=0, local_mem=0, remote_mem=0, interval: int = 50):
+    def __init__(self, l2miss, l3miss, inst, cycles, stall_cycles, wall_cycles, intra_coh,
+                 inter_coh, llc_size, local_mem, remote_mem, interval):
         self._l2miss = l2miss
         self._l3miss = l3miss
         self._instructions = inst
-        self._wall_cycles = wall_cycles
         self._cycles = cycles
         self._stall_cycles = stall_cycles
+        self._wall_cycles = wall_cycles
         self._intra_coh = intra_coh
         self._inter_coh = inter_coh
         self._llc_size = llc_size
         self._local_mem = local_mem
         self._remote_mem = remote_mem
         self._interval = interval
-        self._req_date = strftime("%I:%M:%S", localtime())
+
+    @classmethod
+    def calc_avg(cls, metrics: Iterable['BasicMetric']) -> 'BasicMetric':
+        return BasicMetric(
+                mean(metric._l2miss for metric in metrics),
+                mean(metric._l3miss for metric in metrics),
+                mean(metric._instructions for metric in metrics),
+                mean(metric._cycles for metric in metrics),
+                mean(metric._stall_cycles for metric in metrics),
+                mean(metric._wall_cycles for metric in metrics),
+                mean(metric._intra_coh for metric in metrics),
+                mean(metric._inter_coh for metric in metrics),
+                mean(metric._llc_size for metric in metrics),
+                mean(metric._local_mem for metric in metrics),
+                mean(metric._remote_mem for metric in metrics),
+                mean(metric._interval for metric in metrics),
+        )
 
     @property
     def l2miss(self):
@@ -70,6 +85,7 @@ class BasicMetric:
     def local_mem(self) -> float:
         return self._local_mem
 
+    @property
     def local_mem_ps(self) -> float:
         return self._local_mem * (1000 / self._interval)
 
@@ -77,12 +93,9 @@ class BasicMetric:
     def remote_mem(self):
         return self._remote_mem
 
+    @property
     def remote_mem_ps(self) -> float:
         return self._remote_mem * (1000 / self._interval)
-
-    @property
-    def req_date(self):
-        return self._req_date
 
     @property
     def ipc(self) -> float:
@@ -109,61 +122,28 @@ class BasicMetric:
         return 1 - self._l3miss / self._l2miss
 
     @property
-    def llc_util(self) -> float:
+    def l3_util(self) -> float:
         return self._llc_size / LLC_SIZE
 
     @property
     def l3_intensity(self) -> float:
-        return self.llc_util * self.l3hit_ratio
+        return self.l3_util * self.l3hit_ratio
 
     @property
     def mem_intensity(self) -> float:
-        return self.llc_util * self.l3miss_ratio
-
-    @property
-    def l3_util(self) -> float:
-        return self.llc_util
+        return self.l3_util * self.l3miss_ratio
 
     def __repr__(self) -> str:
         return ', '.join(map(str, (
             self._l2miss, self._l3miss, self._instructions, self._cycles, self._stall_cycles, self._wall_cycles,
-            self._intra_coh, self._inter_coh, self._llc_size, self._local_mem, self._remote_mem,
-            self._interval, self._req_date)))
-
-    def __iadd__(self, others):
-        self._l2miss = self.l2miss + others.l2miss
-        self._l3miss = self.l3miss + others.l3miss
-        self._instructions = self.instruction + others.instruction
-        self._cycles = self._cycles + others.cycles
-        self._stall_cycles = self.stall_cycle + others.stall_cycle
-        self._wall_cycles = self.wall_cycles + others.wall_cycles
-        self._intra_coh = self.intra_coh + others.intra_coh
-        self._inter_coh = self.inter_coh + others.inter_coh
-        self._llc_size = self.llc_size + others.llc_size
-        self._local_mem = self.local_mem + others.local_mem
-        self._remote_mem = self.remote_mem + others.remote_mem
-        return self
-
-    def __truediv__(self, other: int):
-        self._l2miss /= other
-        self._l3miss /= other
-        self._instructions /= other
-        self._cycles /= other
-        self._stall_cycles /= other
-        self._wall_cycles /= other
-        self._intra_coh /= other
-        self._inter_coh /= other
-        self._llc_size /= other
-        self._local_mem /= other
-        self._remote_mem /= other
-        return self
+            self._intra_coh, self._inter_coh, self._llc_size, self._local_mem, self._remote_mem, self._interval)))
 
 
 class MetricDiff:
     def __init__(self, curr: BasicMetric, prev: BasicMetric) -> None:
         self._l3_hit_ratio = curr.l3hit_ratio - prev.l3hit_ratio
-        self._local_mem_ps = curr.local_mem_ps() / prev.local_mem_ps() - 1
-        self._remote_mem_ps = curr.remote_mem_ps() / prev.remote_mem_ps() - 1
+        self._local_mem_ps = curr.local_mem_ps / prev.local_mem_ps - 1
+        self._remote_mem_ps = curr.remote_mem_ps / prev.remote_mem_ps - 1
         self._instruction_ps = curr.instruction_ps / prev.instruction_ps - 1
 
     @property

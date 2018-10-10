@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Type
+from typing import Dict, Type
 
 from .. import ResourceType
 from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator
@@ -19,14 +19,17 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._fg_wl = fg_wl
         self._bg_wl = bg_wl
 
-        self._isolator_map: Dict[Type[Isolator], Isolator] = dict()
+        self._isolator_map: Dict[Type[Isolator], Isolator] = dict((
+            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
+            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
+            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl)),
+        ))
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
         self._aggr_inst_diff: float = None
-        self._isolator_configs: Dict[Type[Isolator], Any] = dict()
-        self._profile_stop_cond: int = None  # the count to stop solorun profiling condition
-        self._thread_changed: bool = False
-        self._fg_runs_alone: bool = False
+
+        self._in_solorun_profile: bool = False
+        self._cached_fg_num_threads: int = fg_wl.number_of_threads
 
     def __hash__(self) -> int:
         return id(self)
@@ -38,13 +41,6 @@ class IsolationPolicy(metaclass=ABCMeta):
         isolators = tuple(self._isolator_map.keys())
         for isolator in isolators:
             del self._isolator_map[isolator]
-
-    def init_isolators(self) -> None:
-        self._isolator_map = dict((
-            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
-            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
-            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl)),
-        ))
 
     @property
     @abstractmethod
@@ -63,7 +59,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         logger.info(repr(metric_diff))
         logger.info(f'l3_int: {cur_metric.l3_intensity:>7.04f}, '
                     f'mem_int: {cur_metric.mem_intensity:>7.04f}, '
-                    f'llc_util: {cur_metric.l3_util:>7.04f}')
+                    f'l3_util: {cur_metric.l3_util:>7.04f}')
         if abs(cur_metric.l3_intensity) < IsolationPolicy._CPU_THRESHOLD \
                 and abs(cur_metric.mem_intensity) < IsolationPolicy._CPU_THRESHOLD:
             return ResourceType.CPU
@@ -125,6 +121,10 @@ class IsolationPolicy(metaclass=ABCMeta):
         return self._aggr_inst_diff
 
     @property
+    def in_solorun_profiling(self) -> bool:
+        return self._in_solorun_profile
+
+    @property
     def most_cont_workload(self) -> Workload:
         fg_wl = self.foreground_workload
         bg_wl = self.background_workload
@@ -157,8 +157,8 @@ class IsolationPolicy(metaclass=ABCMeta):
         fg_wl = self.foreground_workload
         bg_wl = self.background_workload
 
-        fg_mem_bw = fg_wl.metrics[0].local_mem_ps()
-        bg_mem_bw = bg_wl.metrics[0].local_mem_ps()
+        fg_mem_bw = fg_wl.metrics[0].local_mem_ps
+        bg_mem_bw = bg_wl.metrics[0].local_mem_ps
 
         if fg_mem_bw > bg_mem_bw:
             return bg_wl
@@ -181,127 +181,57 @@ class IsolationPolicy(metaclass=ABCMeta):
         for isolator in self._isolator_map.values():
             isolator.reset()
 
-    def store_cur_configs(self) -> None:
-        for isotype, isolator in self._isolator_map.items():
-            isolator.store_cur_config()
-            self._isolator_configs[isotype] = isolator.load_cur_config()
+    def start_solorun_profiling(self) -> None:
+        """ profile solorun status of a workload """
+        if self._in_solorun_profile:
+            raise ValueError('Stop the ongoing solorun profiling first!')
 
-    def reset_stored_configs(self) -> None:
-        """
-        Reset stored configs
-        """
-        logger = logging.getLogger(__name__)
-        # Cpuset (Cpuset)
-        cpuset_config = self._isolator_configs[CoreIsolator]
-        (fg_cpuset, bg_cpuset) = cpuset_config
-        self._fg_wl.cgroup_cpuset.assign_cpus(fg_cpuset)
-        self._bg_wl.cgroup_cpuset.assign_cpus(bg_cpuset)
+        self._in_solorun_profile = True
 
-        # DVFS (Dict(cpuid, freq))
-        dvfs_config = self._isolator_configs[MemoryIsolator]
-        (fg_dvfs_config, bg_dvfs_config) = dvfs_config
-        fg_cpuset = fg_dvfs_config.keys()
-        fg_cpufreq = fg_dvfs_config.values()
-        fg_dvfs = self._fg_wl.dvfs
-        for fg_cpu in fg_cpuset:
-            freq = fg_cpufreq[fg_cpu]
-            fg_dvfs.set_freq(freq, fg_cpu)
-
-        bg_cpuset = bg_dvfs_config.keys()
-        bg_cpufreq = bg_dvfs_config.values()
-        bg_dvfs = self._bg_wl.dvfs
-        for bg_cpu in bg_cpuset:
-            freq = bg_cpufreq[bg_cpu]
-            bg_dvfs.set_freq(freq, bg_cpu)
-
-        # ResCtrl (Mask)
-        resctrl_config = self._isolator_configs[CacheIsolator]
-        (fg_mask, bg_mask) = resctrl_config
-        logger.debug(f'fg_mask: {fg_mask}, bg_mask: {bg_mask}')
-        logger.debug(f'fg_path: {self._fg_wl.resctrl.MOUNT_POINT/self._fg_wl.group_name}')
-        self._fg_wl.resctrl.assign_llc(*fg_mask)
-        self._bg_wl.resctrl.assign_llc(*bg_mask)
-
-    def profile_solorun(self) -> None:
-        """
-        profile solorun status of a workload
-        :return:
-        """
         # suspend all workloads and their perf agents
-        all_fg_wls = list()
-        all_bg_wls = list()
-        fg_wl = self.foreground_workload
-        bg_wl = self.background_workload
-        fg_wl.pause()
-        bg_wl.pause()
-        all_fg_wls.append(fg_wl)
-        all_bg_wls.append(bg_wl)
-
-        # run FG workloads alone
-        for fg_wl in all_fg_wls:
-            fg_wl.solorun_data_queue.clear()  # clear the prev. solorun data
-            fg_wl.profile_solorun = True
-            self.fg_runs_alone = True
-            fg_wl.resume()
-
-    def _update_all_workloads_num_threads(self):
-        """
-        update the workloads' number of threads (cur_num_threads -> prev_num_threads)
-        :return:
-        """
-        bg_wl = self.background_workload
-        fg_wl = self.foreground_workload
-        bg_wl.update_num_threads()
-        fg_wl.update_num_threads()
-
-    def profile_needed(self, profile_interval, schedule_interval, count: int) -> bool:
-        """
-        This function checks if the profiling procedure should be called
-
-        profile_freq : the frequencies of online profiling
-        :param profile_interval: the frequency of attempting profiling solorun
-        :param schedule_interval: the frequency of scheduling (isolation)
-        :param count: This counts the number of entering the run func. loop
-        :return: Decision whether to initiate online solorun profiling
-        """
-        logger = logging.getLogger(__name__)
-        profile_freq = int(profile_interval / schedule_interval)
-        fg_wl = self.foreground_workload
-        logger.debug(f'count: {count}, profile_freq: {profile_freq}, '
-                     f'fg_wl.is_num_threads_changed(): {fg_wl.is_num_threads_changed()}')
-
-        if fg_wl.is_num_threads_changed():
-            fg_wl.thread_changed_before = True
-
-        if count % profile_freq != 0 or not fg_wl.thread_changed_before:
-            self._update_all_workloads_num_threads()
-            return False
-        else:
-            self._update_all_workloads_num_threads()
-            fg_wl.thread_changed_before = False
-            return True
-
-    @property
-    def profile_stop_cond(self) -> int:
-        return self._profile_stop_cond
-
-    @profile_stop_cond.setter
-    def profile_stop_cond(self, new_count: int) -> None:
-        self._profile_stop_cond = new_count
-
-    def all_workload_pause(self):
         self._fg_wl.pause()
         self._bg_wl.pause()
 
-    def all_workload_resume(self):
+        self._fg_wl.metrics.clear()
+
+        # store current configuration
+        for isolator in self._isolator_map.values():
+            isolator.store_cur_config()
+            isolator.reset()
+
+    def stop_solorun_profiling(self) -> None:
+        if not self._in_solorun_profile:
+            raise ValueError('Start solorun profiling first!')
+
+        self._fg_wl.pause()
+
+        logger = logging.getLogger(__name__)
+        logger.debug(f'number of collected solorun data: {len(self._fg_wl.metrics)}')
+        self._fg_wl.avg_solorun_data = BasicMetric.calc_avg(self._fg_wl.metrics)
+        logger.debug(f'calculated average solorun data: {self._fg_wl.avg_solorun_data}')
+
+        self._fg_wl.metrics.clear()
+
+        # resume all
         self._fg_wl.resume()
         self._bg_wl.resume()
-        self.fg_runs_alone = False
 
-    @property
-    def fg_runs_alone(self) -> bool:
-        return self._fg_runs_alone
+        # restore stored configuration
+        for isolator in self._isolator_map.values():
+            isolator.load_cur_config()
 
-    @fg_runs_alone.setter
-    def fg_runs_alone(self, new_val) -> None:
-        self._fg_runs_alone = new_val
+        self._in_solorun_profile = False
+
+    def profile_needed(self) -> bool:
+        """
+        This function checks if the profiling procedure should be called
+        :return: Decision whether to initiate online solorun profiling
+        """
+        # FIXME: or fg doesn't have solorun data
+
+        cur_num_threads = self._fg_wl.number_of_threads
+        if self._fg_wl.avg_solorun_data is None or self._cached_fg_num_threads != cur_num_threads:
+            self._cached_fg_num_threads = cur_num_threads
+            return True
+        else:
+            return False

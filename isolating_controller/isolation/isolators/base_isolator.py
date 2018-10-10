@@ -1,6 +1,7 @@
 # coding: UTF-8
 
 from abc import ABCMeta, abstractmethod
+from typing import Any, Optional
 
 from .. import NextStep
 from ...metric_container.basic_metric import MetricDiff
@@ -9,7 +10,7 @@ from ...workload import Workload
 
 class Isolator(metaclass=ABCMeta):
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        self._prev_metric_diff: MetricDiff = foreground_wl.calc_metric_diff()
+        self._prev_metric_diff: MetricDiff = None
 
         self._foreground_wl = foreground_wl
         self._background_wl = background_wl
@@ -18,6 +19,8 @@ class Isolator(metaclass=ABCMeta):
         self._bg_next_step = NextStep.IDLE
 
         self._is_first_decision: bool = True
+
+        self._stored_config: Optional[Any] = None
 
     def __del__(self):
         self.reset()
@@ -72,20 +75,20 @@ class Isolator(metaclass=ABCMeta):
         self._is_first_decision = True
 
     @abstractmethod
-    def _first_decision(self) -> NextStep:
+    def _first_decision(self, cur_metric_diff: MetricDiff) -> NextStep:
         pass
 
     @abstractmethod
-    def _monitoring_result(self) -> NextStep:
+    def _monitoring_result(self, prev_metric_diff: MetricDiff, cur_metric_diff: MetricDiff) -> NextStep:
         pass
 
     def decide_next_step(self) -> NextStep:
         if self._is_first_decision:
             self._is_first_decision = False
-            return self._first_decision()
+            return self._first_decision(self._foreground_wl.calc_metric_diff())
 
         else:
-            return self._monitoring_result()
+            return self._monitoring_result(self._prev_metric_diff, self._foreground_wl.calc_metric_diff())
 
     @abstractmethod
     def reset(self) -> None:
@@ -104,7 +107,7 @@ class Isolator(metaclass=ABCMeta):
         """Store the current configuration"""
         pass
 
-    @abstractmethod
     def load_cur_config(self) -> None:
         """Load the current configuration"""
-        pass
+        if self._stored_config is None:
+            raise ValueError('Store configuration first!')

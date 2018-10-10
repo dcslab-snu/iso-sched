@@ -3,7 +3,7 @@
 import re
 import subprocess
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Pattern, Tuple
 
 
 def len_of_mask(mask: str) -> int:
@@ -26,7 +26,7 @@ class ResCtrl:
     MIN_BITS: int = int((MOUNT_POINT / 'info' / 'L3' / 'min_cbm_bits').read_text())
     MIN_MASK: str = bits_to_mask(MIN_BITS)
     STEP = 1
-    _read_regex: re = re.compile(r'L3:((\d+=[0-9a-fA-F]+;?)*)', re.MULTILINE)
+    _read_regex: Pattern = re.compile(r'L3:((\d+=[0-9a-fA-F]+;?)*)', re.MULTILINE)
 
     def __init__(self, group_name: str) -> None:
         self._group_name: str = group_name

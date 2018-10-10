@@ -3,12 +3,11 @@
 import logging
 from collections import deque
 from itertools import chain
-from typing import Deque, Iterable, Set, Tuple
+from typing import Deque, Iterable, Optional, Set, Tuple
 
 import psutil
 
 from .metric_container.basic_metric import BasicMetric, MetricDiff
-from .solorun_data.datas import data_map
 from .utils import DVFS, ResCtrl, numa_topology
 from .utils.cgroup import Cpu, CpuSet
 
@@ -37,12 +36,8 @@ class Workload:
         self._resctrl = ResCtrl(self.group_name)
         self._dvfs = DVFS(self.group_name)
 
-        self._profile_solorun: bool = False
-        self._solorun_data_queue: Deque[
-            BasicMetric] = deque()  # This queue is used to collect and calculate avg. status
-        self._avg_solorun_data: BasicMetric = None  # This variable is used to contain the recent avg. status
-        self._prev_num_threads: int = None
-        self._thread_changed_before: bool = False
+        # This variable is used to contain the recent avg. status
+        self._avg_solorun_data: Optional[BasicMetric] = None
 
         self._orig_bound_cores: Tuple[int, ...] = tuple(self._cgroup_cpuset.read_cpus())
         self._orig_bound_mems: Set[int] = self._cgroup_cpuset.read_mems()
@@ -141,65 +136,21 @@ class Workload:
             return 0
 
     @property
-    def prev_num_threads(self) -> int:
-        return self._prev_num_threads
-
-    @property
-    def thread_changed_before(self) -> bool:
-        return self._thread_changed_before
-
-    @thread_changed_before.setter
-    def thread_changed_before(self, new_val) -> None:
-        self._thread_changed_before = new_val
-
-    def update_num_threads(self) -> None:
-        try:
-            self._prev_num_threads = self._proc_info.num_threads()
-        except psutil.NoSuchProcess:
-            self._prev_num_threads = 0
-
-    @property
-    def profile_solorun(self) -> bool:
-        return self._profile_solorun
-
-    @profile_solorun.setter
-    def profile_solorun(self, new_flag: bool) -> None:
-        self._profile_solorun = new_flag
-
-    @property
-    def solorun_data_queue(self) -> Deque[BasicMetric]:
-        return self._solorun_data_queue
-
-    @property
-    def avg_solorun_data(self) -> BasicMetric:
+    def avg_solorun_data(self) -> Optional[BasicMetric]:
         return self._avg_solorun_data
 
-    def calc_avg_solorun(self) -> None:
-        logger = logging.getLogger(__name__)
-        counts = 0
-        sum_of_items = BasicMetric(interval=50)
-        for item in self.solorun_data_queue:
-            logger.debug(f'item in solorun_data_queue : {item}')
-            sum_of_items += item
-            logger.debug(f'sum_of_items[{counts}] : {sum_of_items}')
-            counts += 1
-        logger.debug(f'self.solorun_data_queue : {self.solorun_data_queue}')
-        logger.debug(f'after sum, sum_of_items : {sum_of_items}')
-        self._avg_solorun_data = sum_of_items / counts
-        logger.debug(f'after truediv, truediv_of_items : {self._avg_solorun_data}')
+    @avg_solorun_data.setter
+    def avg_solorun_data(self, new_data: BasicMetric) -> None:
+        self._avg_solorun_data = new_data
 
     def calc_metric_diff(self) -> MetricDiff:
         logger = logging.getLogger(__name__)
-        # solorun_data = data_map[self.name]
-        if self._avg_solorun_data is not None:
-            solorun_data = self._avg_solorun_data
-        else:
-            solorun_data = data_map[self.name]
+
         curr_metric: BasicMetric = self._metrics[0]
-        logger.debug(f'solorun_data L3 hit ratio: {solorun_data.l3hit_ratio}, '
-                     f'Local Mem BW ps : {solorun_data.local_mem_ps()}, '
-                     f'Instruction ps. : {solorun_data.instruction_ps}')
-        return MetricDiff(curr_metric, solorun_data)
+        logger.debug(f'solorun_data L3 hit ratio: {self._avg_solorun_data.l3hit_ratio}, '
+                     f'Local Mem BW ps : {self._avg_solorun_data.local_mem_ps}, '
+                     f'Instruction ps. : {self._avg_solorun_data.instruction_ps}')
+        return MetricDiff(curr_metric, self._avg_solorun_data)
 
     def all_child_tid(self) -> Tuple[int, ...]:
         try:
@@ -226,14 +177,3 @@ class Workload:
     def resume(self) -> None:
         self._proc_info.resume()
         self._perf_info.resume()
-
-    def is_num_threads_changed(self) -> bool:
-        """
-        Detecting the phase changes based on the changes in the number of threads
-        :return:
-        """
-        cur_num_threads = self.number_of_threads
-        if self._prev_num_threads == cur_num_threads:
-            return False
-        else:
-            return True
