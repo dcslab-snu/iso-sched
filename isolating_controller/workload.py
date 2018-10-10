@@ -221,14 +221,10 @@ class Workload:
 
     def pause(self) -> None:
         self._proc_info.suspend()
+        self._perf_info.suspend()
 
     def resume(self) -> None:
         self._proc_info.resume()
-
-    def pause_perf(self) -> None:
-        self._perf_info.suspend()
-
-    def resume_perf(self) -> None:
         self._perf_info.resume()
 
     def is_num_threads_changed(self) -> bool:

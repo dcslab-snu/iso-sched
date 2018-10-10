@@ -271,9 +271,7 @@ class ControlThread(Thread):
             fg_wl = group.foreground_workload
             bg_wl = group.background_workload
             fg_wl.pause()
-            fg_wl.pause_perf()
             bg_wl.pause()
-            bg_wl.pause_perf()
             all_fg_wls.append(fg_wl)
             all_bg_wls.append(bg_wl)
 
@@ -281,7 +279,6 @@ class ControlThread(Thread):
         for fg_wl in all_fg_wls:
             fg_wl.profile_solorun = True
             fg_wl.resume()
-            fg_wl.resume_perf()
 
         # four seconds for monitoring solo-run
         time.sleep(self._solorun_interval)
@@ -293,7 +290,6 @@ class ControlThread(Thread):
         # resume BG workloads
         for bg_wl in all_bg_wls:
             bg_wl.resume()
-            bg_wl.resume_perf()
 
     def _update_all_workloads_num_threads(self):
         """

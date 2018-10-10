@@ -233,9 +233,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         fg_wl = self.foreground_workload
         bg_wl = self.background_workload
         fg_wl.pause()
-        fg_wl.pause_perf()
         bg_wl.pause()
-        bg_wl.pause_perf()
         all_fg_wls.append(fg_wl)
         all_bg_wls.append(bg_wl)
 
@@ -245,7 +243,6 @@ class IsolationPolicy(metaclass=ABCMeta):
             fg_wl.profile_solorun = True
             self.fg_runs_alone = True
             fg_wl.resume()
-            fg_wl.resume_perf()
 
     def _update_all_workloads_num_threads(self):
         """
@@ -294,15 +291,11 @@ class IsolationPolicy(metaclass=ABCMeta):
 
     def all_workload_pause(self):
         self._fg_wl.pause()
-        self._fg_wl.pause_perf()
         self._bg_wl.pause()
-        self._bg_wl.pause_perf()
 
     def all_workload_resume(self):
         self._fg_wl.resume()
-        self._fg_wl.resume_perf()
         self._bg_wl.resume()
-        self._bg_wl.resume_perf()
         self.fg_runs_alone = False
 
     @property
