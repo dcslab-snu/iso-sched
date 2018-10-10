@@ -1,8 +1,8 @@
 # coding: UTF-8
 
 import logging
+from typing import Set, Tuple
 
-from typing import Tuple, Set
 from .base_isolator import Isolator
 from .. import NextStep, ResourceType
 from ...workload import Workload

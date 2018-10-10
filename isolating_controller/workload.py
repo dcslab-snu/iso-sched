@@ -1,15 +1,15 @@
 # coding: UTF-8
 
+import logging
 from collections import deque
 from itertools import chain
 from typing import Deque, Iterable, Set, Tuple
 
 import psutil
-import logging
 
 from .metric_container.basic_metric import BasicMetric, MetricDiff
 from .solorun_data.datas import data_map
-from .utils import ResCtrl, DVFS, numa_topology
+from .utils import DVFS, ResCtrl, numa_topology
 from .utils.cgroup import Cpu, CpuSet
 
 
@@ -38,8 +38,9 @@ class Workload:
         self._dvfs = DVFS(self.group_name)
 
         self._profile_solorun: bool = False
-        self._solorun_data_queue: Deque[BasicMetric] = deque() # This queue is used to collect and calculate avg. status
-        self._avg_solorun_data: BasicMetric = None             # This variable is used to contain the recent avg. status
+        self._solorun_data_queue: Deque[
+            BasicMetric] = deque()  # This queue is used to collect and calculate avg. status
+        self._avg_solorun_data: BasicMetric = None  # This variable is used to contain the recent avg. status
         self._prev_num_threads: int = None
         self._thread_changed_before: bool = False
 
@@ -184,12 +185,12 @@ class Workload:
             counts += 1
         logger.info(f'self.solorun_data_queue : {self.solorun_data_queue}')
         logger.info(f'after sum, sum_of_items : {sum_of_items}')
-        self._avg_solorun_data = sum_of_items/counts
+        self._avg_solorun_data = sum_of_items / counts
         logger.info(f'after truediv, truediv_of_items : {self._avg_solorun_data}')
 
     def calc_metric_diff(self) -> MetricDiff:
         logger = logging.getLogger(__name__)
-        #solorun_data = data_map[self.name]
+        # solorun_data = data_map[self.name]
         if self._avg_solorun_data is not None:
             solorun_data = self._avg_solorun_data
         else:
@@ -240,5 +241,3 @@ class Workload:
             return False
         else:
             return True
-
-

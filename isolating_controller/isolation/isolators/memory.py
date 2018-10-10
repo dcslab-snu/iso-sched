@@ -1,8 +1,8 @@
 # coding: UTF-8
 
 import logging
+from typing import Dict, Tuple
 
-from typing import Tuple, Dict
 from .base_isolator import Isolator
 from .. import NextStep
 from ...utils import DVFS

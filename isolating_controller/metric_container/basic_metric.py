@@ -5,14 +5,13 @@ from __future__ import division
 from time import localtime, strftime
 
 from cpuinfo import cpuinfo
-from typing import Type
 
 LLC_SIZE = int(cpuinfo.get_cpu_info()['l3_cache_size'].split()[0]) * 1024
 
 
 class BasicMetric:
     def __init__(self, l2miss=0, l3miss=0, inst=0, cycles=0, stall_cycles=0, wall_cycles=0, intra_coh=0,
-                 inter_coh=0, llc_size=0, local_mem=0, remote_mem=0, interval: int=50):
+                 inter_coh=0, llc_size=0, local_mem=0, remote_mem=0, interval: int = 50):
         self._l2miss = l2miss
         self._l3miss = l3miss
         self._instructions = inst

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding=UTF-8
 
-from __future__ import print_function, division
+from __future__ import division, print_function
 
 import multiprocessing
 import os
 import sys
 import time
-from signal import SIGSTOP, SIGCONT
+from signal import SIGCONT, SIGSTOP
 from threading import Timer
 
 import psutil

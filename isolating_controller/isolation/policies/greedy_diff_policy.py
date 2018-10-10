@@ -4,7 +4,7 @@ import logging
 
 from .base_policy import IsolationPolicy
 from .. import ResourceType
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
 from ...workload import Workload
 
 
@@ -27,20 +27,20 @@ class GreedyDiffPolicy(IsolationPolicy):
         if resource is ResourceType.CPU:
             self._cur_isolator = self._isolator_map[CoreIsolator]
             self._cur_isolator._contentious_resource = ResourceType.CPU
-            #logger.info(f'Core Isolation for {self._fg_wl} is started to isolate {ResourceType.CPU.name}s')
+            # logger.info(f'Core Isolation for {self._fg_wl} is started to isolate {ResourceType.CPU.name}s')
             logger.info(f'Resource Type: {ResourceType.CPU.name}, CoreIsolation')
             return True
 
         elif resource is ResourceType.CACHE:
             self._cur_isolator = self._isolator_map[CacheIsolator]
-            #logger.info(f'Cache Isolation for {self._fg_wl} is started')
+            # logger.info(f'Cache Isolation for {self._fg_wl} is started')
             logger.info(f'Resource Type: {ResourceType.CACHE.name}, CacheIsolation')
             return True
 
         elif not self._is_mem_isolated and resource is ResourceType.MEMORY:
             self._cur_isolator = self._isolator_map[MemoryIsolator]
             self._is_mem_isolated = True
-            #logger.info(f'Memory Bandwidth Isolation for {self._fg_wl} is started')
+            # logger.info(f'Memory Bandwidth Isolation for {self._fg_wl} is started')
             logger.info(f'Resource Type: {ResourceType.MEMORY.name}, MemoryIsolation')
             return True
 
@@ -48,7 +48,7 @@ class GreedyDiffPolicy(IsolationPolicy):
             self._cur_isolator = self._isolator_map[CoreIsolator]
             self._cur_isolator._contentious_resource = ResourceType.MEMORY
             self._is_mem_isolated = False
-            #logger.info(f'Core Isolation for {self._fg_wl} is started to isolate {ResourceType.MEMORY.name} BW')
+            # logger.info(f'Core Isolation for {self._fg_wl} is started to isolate {ResourceType.MEMORY.name} BW')
             logger.info(f'Resource Type: {ResourceType.MEMORY.name}, CoreIsolation')
             return True
 

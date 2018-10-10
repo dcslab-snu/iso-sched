@@ -1,10 +1,11 @@
 # coding: UTF-8
 
 import subprocess
-from pathlib import Path
-from typing import Iterable, Dict
 from itertools import chain
-from isolating_controller.utils.cgroup import CpuSet, Cpu
+from pathlib import Path
+from typing import Dict, Iterable
+
+from isolating_controller.utils.cgroup import CpuSet
 
 
 class DVFS:

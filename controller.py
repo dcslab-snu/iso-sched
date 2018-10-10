@@ -110,7 +110,7 @@ class MainController(metaclass=Singleton):
         elif workload.profile_solorun:
             logger.debug(f'Metric_queue : workload.profile_solorun')
             # init the solorun_data_queue
-            #workload.solorun_data_queue.clear()
+            # workload.solorun_data_queue.clear()
             # suspend ALL BGs in the same socket
             metric_que = workload.solorun_data_queue
 
@@ -146,7 +146,7 @@ class ControlThread(Thread):
         self._pending_queue: PendingQueue = pending_queue
 
         self._interval: float = 0.2  # scheduling interval (sec)
-        self._count: int = 0         # scheduling counts
+        self._count: int = 0  # scheduling counts
         self._profile_interval: float = 1.0  # check interval for phase change (sec)
         self._solorun_interval: float = 2.0  # the FG's solorun profiling interval (sec)
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
@@ -163,7 +163,7 @@ class ControlThread(Thread):
                 if group.profile_needed(self._profile_interval, self._interval, self._count):
                     logger.info(f'store_cur_configs')
                     group.store_cur_configs()
-                    group.profile_stop_cond = self._count + int(self._solorun_interval/self._interval)
+                    group.profile_stop_cond = self._count + int(self._solorun_interval / self._interval)
                     logger.info(f'reset_to_initial_configs')
                     group.reset()
                     logger.info(f'profile_solorun ({self._count} ~ {group.profile_stop_cond})')
@@ -176,7 +176,7 @@ class ControlThread(Thread):
                     logger.info(f'fg.profile_solorun = False')
                     group.foreground_workload.profile_solorun = False
                     logger.info(f'calc_and_update fg._avg_solorun_data')
-                    #logger.info(f'fg_wl.solorun_data_queue: {group._fg_wl.solorun_data_queue}')
+                    # logger.info(f'fg_wl.solorun_data_queue: {group._fg_wl.solorun_data_queue}')
                     group.foreground_workload.calc_avg_solorun()
                     logger.info(f'fg_wl.avg_solorun_data: {group._fg_wl.avg_solorun_data}')
                     logger.info(f'reset_stored_configs')
@@ -310,7 +310,7 @@ class ControlThread(Thread):
         :return: Decision whether to initiate online solorun profiling
         """
 
-        profile_freq = int(self._profile_interval/self._interval)
+        profile_freq = int(self._profile_interval / self._interval)
         for group in self._isolation_groups:
             fg_wl = group.foreground_workload
             if count % profile_freq != 0 and fg_wl.is_num_threads_changed():

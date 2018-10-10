@@ -1,7 +1,7 @@
 # coding: UTF-8
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Type, Any
+from typing import Any, Dict, Type
 
 from .. import ResourceType
 from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator
@@ -266,7 +266,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         :return: Decision whether to initiate online solorun profiling
         """
         logger = logging.getLogger(__name__)
-        profile_freq = int(profile_interval/schedule_interval)
+        profile_freq = int(profile_interval / schedule_interval)
         fg_wl = self.foreground_workload
         logger.info(f'count: {count}, profile_freq: {profile_freq}, '
                     f'fg_wl.is_num_threads_changed(): {fg_wl.is_num_threads_changed()}')

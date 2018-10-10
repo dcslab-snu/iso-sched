@@ -1,7 +1,7 @@
 # coding: UTF-8
 
-import re
 import logging
+import re
 import subprocess
 from pathlib import Path
 from typing import List, Tuple
@@ -50,7 +50,7 @@ class ResCtrl:
         logger = logging.getLogger(__name__)
         masks = (f'{i}={mask}' for i, mask in enumerate(masks))
         mask = ';'.join(masks)
-        #subprocess.check_call('ls -ll /sys/fs/resctrl/', shell=True)
+        # subprocess.check_call('ls -ll /sys/fs/resctrl/', shell=True)
         logger.info(f'mask: {mask}')
         subprocess.run(args=('sudo', 'tee', str(self._group_path / 'schemata')),
                        input=f'L3:{mask}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
