@@ -1,4 +1,5 @@
 # coding: UTF-8
+
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Type
@@ -60,8 +61,9 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         logger = logging.getLogger(__name__)
         logger.info(repr(metric_diff))
-        logger.info(f'l3_int: {cur_metric.l3_intensity}, mem_int: {cur_metric.mem_intensity}, '
-                    f'llc_util: {cur_metric.l3_util}')
+        logger.info(f'l3_int: {cur_metric.l3_intensity:>7.04f}, '
+                    f'mem_int: {cur_metric.mem_intensity:>7.04f}, '
+                    f'llc_util: {cur_metric.l3_util:>7.04f}')
         if abs(cur_metric.l3_intensity) < IsolationPolicy._CPU_THRESHOLD \
                 and abs(cur_metric.mem_intensity) < IsolationPolicy._CPU_THRESHOLD:
             return ResourceType.CPU
@@ -215,8 +217,8 @@ class IsolationPolicy(metaclass=ABCMeta):
         # ResCtrl (Mask)
         resctrl_config = self._isolator_configs[CacheIsolator]
         (fg_mask, bg_mask) = resctrl_config
-        logger.info(f'fg_mask: {fg_mask}, bg_mask: {bg_mask}')
-        logger.info(f'fg_path: {self._fg_wl.resctrl.MOUNT_POINT/self._fg_wl.group_name}')
+        logger.debug(f'fg_mask: {fg_mask}, bg_mask: {bg_mask}')
+        logger.debug(f'fg_path: {self._fg_wl.resctrl.MOUNT_POINT/self._fg_wl.group_name}')
         self._fg_wl.resctrl.assign_llc(*fg_mask)
         self._bg_wl.resctrl.assign_llc(*bg_mask)
 
@@ -268,8 +270,8 @@ class IsolationPolicy(metaclass=ABCMeta):
         logger = logging.getLogger(__name__)
         profile_freq = int(profile_interval / schedule_interval)
         fg_wl = self.foreground_workload
-        logger.info(f'count: {count}, profile_freq: {profile_freq}, '
-                    f'fg_wl.is_num_threads_changed(): {fg_wl.is_num_threads_changed()}')
+        logger.debug(f'count: {count}, profile_freq: {profile_freq}, '
+                     f'fg_wl.is_num_threads_changed(): {fg_wl.is_num_threads_changed()}')
 
         if fg_wl.is_num_threads_changed():
             fg_wl.thread_changed_before = True

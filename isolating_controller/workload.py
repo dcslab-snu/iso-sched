@@ -179,14 +179,14 @@ class Workload:
         counts = 0
         sum_of_items = BasicMetric(interval=50)
         for item in self.solorun_data_queue:
-            logger.info(f'item in solorun_data_queue : {item}')
+            logger.debug(f'item in solorun_data_queue : {item}')
             sum_of_items += item
-            logger.info(f'sum_of_items[{counts}] : {sum_of_items}')
+            logger.debug(f'sum_of_items[{counts}] : {sum_of_items}')
             counts += 1
-        logger.info(f'self.solorun_data_queue : {self.solorun_data_queue}')
-        logger.info(f'after sum, sum_of_items : {sum_of_items}')
+        logger.debug(f'self.solorun_data_queue : {self.solorun_data_queue}')
+        logger.debug(f'after sum, sum_of_items : {sum_of_items}')
         self._avg_solorun_data = sum_of_items / counts
-        logger.info(f'after truediv, truediv_of_items : {self._avg_solorun_data}')
+        logger.debug(f'after truediv, truediv_of_items : {self._avg_solorun_data}')
 
     def calc_metric_diff(self) -> MetricDiff:
         logger = logging.getLogger(__name__)
@@ -196,9 +196,9 @@ class Workload:
         else:
             solorun_data = data_map[self.name]
         curr_metric: BasicMetric = self._metrics[0]
-        logger.info(f'solorun_data L3 hit ratio: {solorun_data.l3hit_ratio}, '
-                    f'Local Mem BW ps : {solorun_data.local_mem_ps()}, '
-                    f'Instruction ps. : {solorun_data.instruction_ps}')
+        logger.debug(f'solorun_data L3 hit ratio: {solorun_data.l3hit_ratio}, '
+                     f'Local Mem BW ps : {solorun_data.local_mem_ps()}, '
+                     f'Instruction ps. : {solorun_data.instruction_ps}')
         return MetricDiff(curr_metric, solorun_data)
 
     def all_child_tid(self) -> Tuple[int, ...]:

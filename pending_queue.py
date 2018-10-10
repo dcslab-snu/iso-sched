@@ -23,7 +23,7 @@ class PendingQueue(Sized):
                        self._pending_list)))
 
     def add(self, workload: Workload) -> None:
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger('monitoring.pending_queue')
         logger.info(f'{workload} is ready for active')
 
         ready_queue = self._ready_queue[workload.cur_socket_id()]

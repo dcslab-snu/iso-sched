@@ -1,6 +1,5 @@
 # coding: UTF-8
 
-import logging
 import re
 import subprocess
 from pathlib import Path
@@ -47,11 +46,9 @@ class ResCtrl:
                        input=f'{pid}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
 
     def assign_llc(self, *masks: str) -> None:
-        logger = logging.getLogger(__name__)
         masks = (f'{i}={mask}' for i, mask in enumerate(masks))
         mask = ';'.join(masks)
         # subprocess.check_call('ls -ll /sys/fs/resctrl/', shell=True)
-        logger.info(f'mask: {mask}')
         subprocess.run(args=('sudo', 'tee', str(self._group_path / 'schemata')),
                        input=f'L3:{mask}\n', check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
 
