@@ -1,9 +1,11 @@
 # coding: UTF-8
 
 import logging
+from typing import Optional
 
 from .base_isolator import Isolator
 from .. import NextStep
+from ...metric_container.basic_metric import MetricDiff
 from ...workload import Workload
 
 
@@ -16,6 +18,8 @@ class SchedIsolator(Isolator):
 
         # FIXME: hard coded
         self._cur_step = background_wl.orig_bound_cores[0]
+
+        self._stored_config: Optional[int] = None
 
     def strengthen(self) -> 'SchedIsolator':
         self._cur_step += 1
@@ -43,8 +47,7 @@ class SchedIsolator(Isolator):
         # FIXME: hard coded
         self._background_wl.bound_cores = range(self._cur_step, self._background_wl.orig_bound_cores[-1] + 1)
 
-    def _first_decision(self) -> NextStep:
-        metric_diff = self._foreground_wl.calc_metric_diff()
+    def _first_decision(self, metric_diff: MetricDiff) -> NextStep:
         curr_diff = metric_diff.local_mem_util_ps
 
         logger = logging.getLogger(__name__)
@@ -63,11 +66,9 @@ class SchedIsolator(Isolator):
             else:
                 return NextStep.WEAKEN
 
-    def _monitoring_result(self) -> NextStep:
-        metric_diff = self._foreground_wl.calc_metric_diff()
-
-        curr_diff = metric_diff.local_mem_util_ps
-        prev_diff = self._prev_metric_diff.local_mem_util_ps
+    def _monitoring_result(self, prev_metric_diff: MetricDiff, cur_metric_diff: MetricDiff) -> NextStep:
+        curr_diff = cur_metric_diff.local_mem_util_ps
+        prev_diff = prev_metric_diff.local_mem_util_ps
         diff_of_diff = curr_diff - prev_diff
 
         logger = logging.getLogger(__name__)
@@ -89,3 +90,13 @@ class SchedIsolator(Isolator):
     def reset(self) -> None:
         if self._background_wl.is_running:
             self._background_wl.bound_cores = self._background_wl.orig_bound_cores
+
+    def store_cur_config(self) -> None:
+        self._stored_config = self._cur_step
+
+    def load_cur_config(self) -> None:
+        super().load_cur_config()
+
+        self._cur_step = self._stored_config
+        self._enforce()
+        self._stored_config = None
