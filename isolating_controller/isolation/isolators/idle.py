@@ -22,7 +22,7 @@ class IdleIsolator(Isolator):
     def weaken(self) -> 'Isolator':
         pass
 
-    def _enforce(self) -> None:
+    def enforce(self) -> None:
         pass
 
     def _first_decision(self, _) -> NextStep:

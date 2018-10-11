@@ -53,7 +53,7 @@ class CacheIsolator(Isolator):
         # FIXME: hard coded
         return self._cur_step is None or self._cur_step - ResCtrl.STEP <= ResCtrl.MIN_BITS
 
-    def _enforce(self) -> None:
+    def enforce(self) -> None:
         logger = logging.getLogger(__name__)
 
         if self._cur_step is None:
@@ -132,5 +132,4 @@ class CacheIsolator(Isolator):
         super().load_cur_config()
 
         self._prev_step, self._cur_step = self._stored_config
-        self._enforce()
         self._stored_config = None

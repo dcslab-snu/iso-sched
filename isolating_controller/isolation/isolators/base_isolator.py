@@ -58,14 +58,9 @@ class Isolator(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _enforce(self) -> None:
-        pass
-
     def enforce(self) -> None:
         """Actually applies the isolation parameter that set on the current object"""
-        self._prev_metric_diff: MetricDiff = self._foreground_wl.calc_metric_diff()
-
-        self._enforce()
+        pass
 
     def yield_isolation(self) -> None:
         """
@@ -83,12 +78,18 @@ class Isolator(metaclass=ABCMeta):
         pass
 
     def decide_next_step(self) -> NextStep:
+        curr_metric_diff = self._foreground_wl.calc_metric_diff()
+
         if self._is_first_decision:
             self._is_first_decision = False
-            return self._first_decision(self._foreground_wl.calc_metric_diff())
+            next_step = self._first_decision(curr_metric_diff)
 
         else:
-            return self._monitoring_result(self._prev_metric_diff, self._foreground_wl.calc_metric_diff())
+            next_step = self._monitoring_result(self._prev_metric_diff, curr_metric_diff)
+
+        self._prev_metric_diff = curr_metric_diff
+
+        return next_step
 
     @abstractmethod
     def reset(self) -> None:

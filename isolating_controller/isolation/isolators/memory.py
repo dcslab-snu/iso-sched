@@ -39,7 +39,7 @@ class MemoryIsolator(Isolator):
         # FIXME: hard coded
         return DVFS.MAX <= self._cur_step + DVFS.STEP
 
-    def _enforce(self) -> None:
+    def enforce(self) -> None:
         logger = logging.getLogger(__name__)
         logger.info(f'frequency of bound_cores {self._background_wl.bound_cores} is {self._cur_step / 1_000_000}GHz')
 
@@ -94,5 +94,4 @@ class MemoryIsolator(Isolator):
         super().load_cur_config()
 
         self._cur_step = self._stored_config
-        self._enforce()
         self._stored_config = None

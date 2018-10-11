@@ -69,7 +69,7 @@ class CoreIsolator(Isolator):
         return self._cur_bg_step == self._background_wl.orig_bound_cores[0] and \
                self._cur_fg_step == self._foreground_wl.orig_bound_cores[-1]
 
-    def _enforce(self) -> None:
+    def enforce(self) -> None:
         logger = logging.getLogger(__name__)
         logger.debug(f'fg affinity : {self._foreground_wl.orig_bound_cores[0]}-{self._cur_fg_step}')
         logger.debug(f'bg affinity : {self._cur_bg_step}-{self._background_wl.orig_bound_cores[-1]}')
@@ -234,5 +234,4 @@ class CoreIsolator(Isolator):
         super().load_cur_config()
 
         self._cur_fg_step, self._cur_bg_step = self._stored_config
-        self._enforce()
         self._stored_config = None
