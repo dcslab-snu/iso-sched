@@ -241,15 +241,12 @@ class ControlThread(Thread):
     def run(self) -> None:
         logger = logging.getLogger(__name__)
         logger.info('starting isolation loop')
-        # count = 0
+
         while True:
             self._remove_ended_groups()
             self._register_pending_workloads()
 
             time.sleep(self._interval)
-            # count += 1
-            # if self._profile_needed(count):
-            #    self._profile_solorun()
             self._isolate_workloads()
 
 
