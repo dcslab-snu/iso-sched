@@ -8,6 +8,7 @@ from typing import Deque, Iterable, Optional, Set, Tuple
 import psutil
 
 from .metric_container.basic_metric import BasicMetric, MetricDiff
+from .solorun_data.datas import data_map
 from .utils import DVFS, ResCtrl, numa_topology
 from .utils.cgroup import Cpu, CpuSet
 
@@ -38,6 +39,9 @@ class Workload:
 
         # This variable is used to contain the recent avg. status
         self._avg_solorun_data: Optional[BasicMetric] = None
+
+        if wl_type == 'bg':
+            self._avg_solorun_data = data_map[name]
 
         self._orig_bound_cores: Tuple[int, ...] = tuple(self._cgroup_cpuset.read_cpus())
         self._orig_bound_mems: Set[int] = self._cgroup_cpuset.read_mems()
