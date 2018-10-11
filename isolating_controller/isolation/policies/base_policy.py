@@ -116,13 +116,86 @@ class IsolationPolicy(metaclass=ABCMeta):
     def name(self) -> str:
         return f'{self._fg_wl.name}({self._fg_wl.pid})'
 
-    @property
-    def aggr_inst(self) -> float:
-        return self._aggr_inst_diff
+    def set_idle_isolator(self) -> None:
+        self._cur_isolator.yield_isolation()
+        self._cur_isolator = IsolationPolicy._IDLE_ISOLATOR
+
+    def reset(self) -> None:
+        for isolator in self._isolator_map.values():
+            isolator.reset()
+
+    # Solorun profiling related
 
     @property
     def in_solorun_profiling(self) -> bool:
         return self._in_solorun_profile
+
+    def start_solorun_profiling(self) -> None:
+        """ profile solorun status of a workload """
+        if self._in_solorun_profile:
+            raise ValueError('Stop the ongoing solorun profiling first!')
+
+        self._in_solorun_profile = True
+
+        # suspend all workloads and their perf agents
+        self._fg_wl.pause()
+        self._bg_wl.pause()
+
+        # store current configuration
+        for isolator in self._isolator_map.values():
+            isolator.store_cur_config()
+            isolator.reset()
+
+        self._fg_wl.metrics.clear()
+
+        self._fg_wl.resume()
+
+    def stop_solorun_profiling(self) -> None:
+        if not self._in_solorun_profile:
+            raise ValueError('Start solorun profiling first!')
+
+        self._fg_wl.pause()
+
+        logger = logging.getLogger(__name__)
+        logger.debug(f'number of collected solorun data: {len(self._fg_wl.metrics)}')
+        self._fg_wl.avg_solorun_data = BasicMetric.calc_avg(self._fg_wl.metrics)
+        logger.debug(f'calculated average solorun data: {self._fg_wl.avg_solorun_data}')
+
+        logger.debug('Enforcing restored configuration...')
+        # restore stored configuration
+        for isolator in self._isolator_map.values():
+            isolator.load_cur_config()
+            isolator.enforce()
+
+        self._fg_wl.metrics.clear()
+
+        # resume all
+        self._fg_wl.resume()
+        self._bg_wl.resume()
+
+        self._in_solorun_profile = False
+
+    def profile_needed(self) -> bool:
+        """
+        This function checks if the profiling procedure should be called
+        :return: Decision whether to initiate online solorun profiling
+        """
+        cur_num_threads = self._fg_wl.number_of_threads
+        if self._fg_wl.avg_solorun_data is None or self._cached_fg_num_threads != cur_num_threads:
+            self._cached_fg_num_threads = cur_num_threads
+            return True
+        else:
+            return False
+
+    # Swapper related
+
+    @property
+    def safe_to_swap(self) -> bool:
+        return not self._in_solorun_profile and len(self._fg_wl.metrics) > 0
+
+    @property
+    def aggr_inst(self) -> float:
+        return self._aggr_inst_diff
 
     @property
     def most_cont_workload(self) -> Workload:
@@ -172,70 +245,3 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._fg_wl._ipc_diff = fg_diff.instruction_ps
         self._bg_wl._ipc_diff = bg_diff.instruction_ps
         self._aggr_inst_diff = fg_diff.instruction_ps + bg_diff.instruction_ps
-
-    def set_idle_isolator(self) -> None:
-        self._cur_isolator.yield_isolation()
-        self._cur_isolator = IsolationPolicy._IDLE_ISOLATOR
-
-    def reset(self) -> None:
-        for isolator in self._isolator_map.values():
-            isolator.reset()
-
-    def start_solorun_profiling(self) -> None:
-        """ profile solorun status of a workload """
-        if self._in_solorun_profile:
-            raise ValueError('Stop the ongoing solorun profiling first!')
-
-        self._in_solorun_profile = True
-
-        # suspend all workloads and their perf agents
-        self._fg_wl.pause()
-        self._bg_wl.pause()
-
-        self._fg_wl.metrics.clear()
-
-        # store current configuration
-        for isolator in self._isolator_map.values():
-            isolator.store_cur_config()
-            isolator.reset()
-
-        self._fg_wl.resume()
-
-    def stop_solorun_profiling(self) -> None:
-        if not self._in_solorun_profile:
-            raise ValueError('Start solorun profiling first!')
-
-        self._fg_wl.pause()
-
-        logger = logging.getLogger(__name__)
-        logger.debug(f'number of collected solorun data: {len(self._fg_wl.metrics)}')
-        self._fg_wl.avg_solorun_data = BasicMetric.calc_avg(self._fg_wl.metrics)
-        logger.debug(f'calculated average solorun data: {self._fg_wl.avg_solorun_data}')
-
-        logger.debug('Enforcing restored configuration...')
-        # restore stored configuration
-        for isolator in self._isolator_map.values():
-            isolator.load_cur_config()
-            isolator.enforce()
-
-        self._fg_wl.metrics.clear()
-
-        # resume all
-        self._fg_wl.resume()
-        self._bg_wl.resume()
-
-        self._in_solorun_profile = False
-
-    def profile_needed(self) -> bool:
-        """
-        This function checks if the profiling procedure should be called
-        :return: Decision whether to initiate online solorun profiling
-        """
-        # FIXME: or fg doesn't have solorun data
-
-        cur_num_threads = self._fg_wl.number_of_threads
-        if self._fg_wl.avg_solorun_data is None or self._cached_fg_num_threads != cur_num_threads:
-            self._cached_fg_num_threads = cur_num_threads
-            return True
-        else:
-            return False

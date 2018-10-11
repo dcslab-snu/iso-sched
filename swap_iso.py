@@ -39,7 +39,7 @@ class SwapIsolator:
         logger = logging.getLogger(__name__)
         logger.info('SwapIsolator is closed...')
 
-    def update_cont_group(self) -> None:
+    def select_cont_group(self) -> None:
         """
         Most contentious group is the group which shows "the LOWEST aggr. ipc diff"
         Least contentious group is the group which shows "the HIGHEST aggr. ipc diff"
@@ -57,16 +57,17 @@ class SwapIsolator:
                 swap_out_grp = group
 
             group.update_aggr_instr()
-            swap_in_grp = max(swap_in_grp, group, key=lambda x: x.aggr_ipc)
-            swap_out_grp = min(swap_out_grp, group, key=lambda x: x.aggr_ipc)
+            swap_in_grp = max(swap_in_grp, group, key=lambda x: x.aggr_inst)
+            swap_out_grp = min(swap_out_grp, group, key=lambda x: x.aggr_inst)
 
         self._most_cont_group = swap_out_grp
         self._least_cont_group = swap_in_grp
 
     def swap_is_needed(self) -> bool:
+        self.select_cont_group()
+
         # FIXME: We used the average ipc diff value (We assume two workloads in a group at most)
-        avg_min_ipc_diff = self._most_cont_group.aggr_ipc / 2
-        print(avg_min_ipc_diff)
+        avg_min_ipc_diff = self._most_cont_group.aggr_inst / 2
 
         # TODO: Test the _IPC_DIFF_THRESHOLD
         if avg_min_ipc_diff > self._IPC_DIFF_THRESHOLD:
@@ -91,9 +92,9 @@ class SwapIsolator:
             return False
 
     def do_swap(self) -> None:
+        # Enable CPUSET memory migration
         self.pre_swap_setup()
 
-        # Enable CPUSET memory migration
         out_wl = self._most_cont_group.background_workload
         in_wl = self._least_cont_group.background_workload
 
@@ -133,12 +134,3 @@ class SwapIsolator:
 
         swap_out_workload.cgroup_cpuset.set_memory_migrate(True)
         swap_in_workload.cgroup_cpuset.set_memory_migrate(True)
-
-    def try_swap(self) -> None:
-        if len(self._all_groups) < 2:
-            return
-
-        self.update_cont_group()
-
-        if self.swap_is_needed():
-            self.do_swap()

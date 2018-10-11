@@ -150,8 +150,6 @@ class ControlThread(Thread):
     def _isolate_workloads(self) -> None:
         logger = logging.getLogger(__name__)
 
-        self._swapper.try_swap()
-
         for group, iteration_num in self._isolation_groups.items():
             logger.info('')
             logger.info(f'***************isolation of {group.name} #{iteration_num}***************')
@@ -206,6 +204,10 @@ class ControlThread(Thread):
             finally:
                 self._isolation_groups[group] += 1
 
+        if len(tuple(filter(lambda x: x.safe_to_swap, self._isolation_groups.keys()))) < 2:
+            if self._swapper.swap_is_needed():
+                self._swapper.do_swap()
+
     def _register_pending_workloads(self) -> None:
         """
         This function detects and registers the spawned workloads(threads).
@@ -241,15 +243,12 @@ class ControlThread(Thread):
     def run(self) -> None:
         logger = logging.getLogger(__name__)
         logger.info('starting isolation loop')
-        # count = 0
+
         while True:
             self._remove_ended_groups()
             self._register_pending_workloads()
 
             time.sleep(self._interval)
-            # count += 1
-            # if self._profile_needed(count):
-            #    self._profile_solorun()
             self._isolate_workloads()
 
 
