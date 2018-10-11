@@ -69,7 +69,7 @@ class CoreIsolator(Isolator):
         return self._cur_bg_step == self._background_wl.orig_bound_cores[0] and \
                self._cur_fg_step == self._foreground_wl.orig_bound_cores[-1]
 
-    def _enforce(self) -> None:
+    def enforce(self) -> None:
         logger = logging.getLogger(__name__)
         logger.debug(f'fg affinity : {self._foreground_wl.orig_bound_cores[0]}-{self._cur_fg_step}')
         logger.debug(f'bg affinity : {self._cur_bg_step}-{self._background_wl.orig_bound_cores[-1]}')
@@ -138,10 +138,11 @@ class CoreIsolator(Isolator):
             return self._strengthen_condition(cur_metric_diff.instruction_ps)
 
     def _weaken_condition(self, fg_instruction_ps: float) -> NextStep:
-        fg_not_used_cores = len(self._foreground_wl.bound_cores) - self._foreground_wl.number_of_threads
         # BG Next Step Decision
         # ResourceType.CPU - If FG workload not fully use all its assigned cores..., then BG can weaken!
         if self._contentious_resource == ResourceType.CPU:
+            fg_not_used_cores = len(self._foreground_wl.bound_cores) - self._foreground_wl.number_of_threads
+
             if fg_not_used_cores == 0:
                 self._bg_next_step = NextStep.IDLE
             elif fg_not_used_cores > 0:
@@ -178,6 +179,7 @@ class CoreIsolator(Isolator):
             elif fg_instruction_ps <= self._INST_PS_THRESHOLD and \
                     self._foreground_wl.number_of_threads > len(self._foreground_wl.bound_cores):
                 self._bg_next_step = NextStep.STRENGTHEN
+
         # ResourceType.MEMORY - If BG workload can strengthen its cores... , then strengthen BG's cores!
         elif self._contentious_resource == ResourceType.MEMORY:
             if self._cur_bg_step == self._background_wl.orig_bound_cores[-1]:
@@ -207,26 +209,6 @@ class CoreIsolator(Isolator):
         if self._foreground_wl.is_running:
             self._foreground_wl.bound_cores = self._foreground_wl.orig_bound_cores
 
-    @staticmethod
-    def _is_more_core_benefit(wl: Workload) -> bool:
-        wl_threads = wl.number_of_threads
-        wl_cpus = len(wl.cgroup_cpuset.read_cpus())
-        print(f'{wl.wl_type}, {wl.name}, threads : {wl_threads}, len(cpuset): {wl_cpus}')
-        if wl_threads > wl_cpus:
-            return True
-        else:
-            return False
-
-    @staticmethod
-    def _is_less_core_benefit(wl: Workload) -> bool:
-        wl_threads = wl.number_of_threads
-        wl_cpus = len(wl.cgroup_cpuset.read_cpus())
-        print(f'{wl.wl_type}, {wl.name}, threads : {wl_threads}, len(cpuset): {wl_cpus}')
-        if wl_threads < wl_cpus:
-            return True
-        else:
-            return False
-
     def store_cur_config(self) -> None:
         self._stored_config = (self._cur_fg_step, self._cur_bg_step)
 
@@ -234,5 +216,4 @@ class CoreIsolator(Isolator):
         super().load_cur_config()
 
         self._cur_fg_step, self._cur_bg_step = self._stored_config
-        self._enforce()
         self._stored_config = None

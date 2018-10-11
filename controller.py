@@ -174,6 +174,7 @@ class ControlThread(Thread):
                 elif iteration_num % int(self._profile_interval / self._interval) == 0 and group.profile_needed():
                     group.start_solorun_profiling()
                     self._solorun_count[group] = iteration_num
+                    group.set_idle_isolator()
                     logger.info('skipping isolation because of solorun profiling...')
                     continue
 

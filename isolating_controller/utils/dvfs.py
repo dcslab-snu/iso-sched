@@ -2,7 +2,7 @@
 
 import subprocess
 from pathlib import Path
-from typing import Dict, Iterable
+from typing import Iterable
 
 from isolating_controller.utils.cgroup import CpuSet
 
@@ -15,10 +15,6 @@ class DVFS:
     def __init__(self, group_name):
         self._group_name: str = group_name
         self._cur_cgroup = CpuSet(self._group_name)
-        self._cpufreq: Dict[int, int] = dict()
-
-        # FIXME: hard coded to max freq.
-        self.set_freq_cgroup(DVFS.MAX)
 
     def set_freq_cgroup(self, target_freq: int):
         """
@@ -27,19 +23,6 @@ class DVFS:
         :return:
         """
         DVFS.set_freq(target_freq, self._cur_cgroup.read_cpus())
-
-    @property
-    def cpufreq(self) -> Dict[int, int]:
-        """
-        Return the cpufreq info
-        :return: _cpufreq is dict. key:val = cpu_id:cpu_freq
-        """
-        return self._cpufreq
-
-    def save_freq(self, freq: int):
-        cpuset = self._cpufreq.keys()
-        for cpu_id in cpuset:
-            self._cpufreq[cpu_id] = freq
 
     @staticmethod
     def set_freq(freq: int, cores: Iterable[int]) -> None:

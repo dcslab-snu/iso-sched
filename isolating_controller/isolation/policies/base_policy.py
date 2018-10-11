@@ -212,15 +212,17 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._fg_wl.avg_solorun_data = BasicMetric.calc_avg(self._fg_wl.metrics)
         logger.debug(f'calculated average solorun data: {self._fg_wl.avg_solorun_data}')
 
+        logger.debug('Enforcing restored configuration...')
+        # restore stored configuration
+        for isolator in self._isolator_map.values():
+            isolator.load_cur_config()
+            isolator.enforce()
+
         self._fg_wl.metrics.clear()
 
         # resume all
         self._fg_wl.resume()
         self._bg_wl.resume()
-
-        # restore stored configuration
-        for isolator in self._isolator_map.values():
-            isolator.load_cur_config()
 
         self._in_solorun_profile = False
 
