@@ -2,9 +2,10 @@
 
 import logging
 
+from isolating_controller.isolation.isolators.affinity import AffinityIsolator
 from .base_policy import IsolationPolicy
 from .. import ResourceType
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
+from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
@@ -22,34 +23,30 @@ class GreedyDiffPolicy(IsolationPolicy):
         logger = logging.getLogger(__name__)
         logger.debug('looking for new isolation...')
 
+        # if foreground is web server (CPU critical)
+        if len(self._fg_wl.bound_cores) < self._fg_wl.number_of_threads:
+            if AffinityIsolator in self._isolator_map and not self._isolator_map[AffinityIsolator].is_max_level:
+                self._cur_isolator = self._isolator_map[AffinityIsolator]
+                logger.info(f'AffinityIsolator')
+                return True
+
         resource: ResourceType = self.contentious_resource()
 
-        if resource is ResourceType.CPU:
-            self._cur_isolator = self._isolator_map[CoreIsolator]
-            self._cur_isolator._contentious_resource = ResourceType.CPU
-            # logger.info(f'Core Isolation for {self._fg_wl} is started to isolate {ResourceType.CPU.name}s')
-            logger.info(f'Resource Type: {ResourceType.CPU.name}, CoreIsolation')
-            return True
-
-        elif resource is ResourceType.CACHE:
+        if resource is ResourceType.CACHE:
             self._cur_isolator = self._isolator_map[CacheIsolator]
-            # logger.info(f'Cache Isolation for {self._fg_wl} is started')
             logger.info(f'Resource Type: {ResourceType.CACHE.name}, CacheIsolation')
             return True
 
         elif not self._is_mem_isolated and resource is ResourceType.MEMORY:
             self._cur_isolator = self._isolator_map[MemoryIsolator]
             self._is_mem_isolated = True
-            # logger.info(f'Memory Bandwidth Isolation for {self._fg_wl} is started')
             logger.info(f'Resource Type: {ResourceType.MEMORY.name}, MemoryIsolation')
             return True
 
         elif resource is ResourceType.MEMORY:
-            self._cur_isolator = self._isolator_map[CoreIsolator]
-            self._cur_isolator._contentious_resource = ResourceType.MEMORY
+            self._cur_isolator = self._isolator_map[SchedIsolator]
             self._is_mem_isolated = False
-            # logger.info(f'Core Isolation for {self._fg_wl} is started to isolate {ResourceType.MEMORY.name} BW')
-            logger.info(f'Resource Type: {ResourceType.MEMORY.name}, CoreIsolation')
+            logger.info(f'Resource Type: {ResourceType.MEMORY.name}, SchedIsolation')
             return True
 
         else:

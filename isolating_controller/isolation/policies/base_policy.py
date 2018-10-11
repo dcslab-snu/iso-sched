@@ -5,7 +5,8 @@ from abc import ABCMeta, abstractmethod
 from typing import Dict, Type
 
 from .. import ResourceType
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator
+from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
+from ..isolators.affinity import AffinityIsolator
 from ...metric_container.basic_metric import BasicMetric, MetricDiff
 from ...workload import Workload
 
@@ -22,7 +23,8 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._isolator_map: Dict[Type[Isolator], Isolator] = dict((
             (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
             (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
-            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl)),
+            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl)),
+            (AffinityIsolator, AffinityIsolator(self._fg_wl, self._bg_wl)),
         ))
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
@@ -56,14 +58,11 @@ class IsolationPolicy(metaclass=ABCMeta):
         cur_metric: BasicMetric = self._fg_wl.metrics[0]
 
         logger = logging.getLogger(__name__)
-        logger.info(repr(metric_diff))
+        logger.info(f'foreground : {metric_diff}')
+        logger.info(f'background : {self._bg_wl.calc_metric_diff()}')
         logger.info(f'l3_int: {cur_metric.l3_intensity:>7.04f}, '
                     f'mem_int: {cur_metric.mem_intensity:>7.04f}, '
                     f'l3_util: {cur_metric.l3_util:>7.04f}')
-        if abs(cur_metric.l3_intensity) < IsolationPolicy._CPU_THRESHOLD \
-                and abs(cur_metric.mem_intensity) < IsolationPolicy._CPU_THRESHOLD:
-            return ResourceType.CPU
-
         if metric_diff.local_mem_util_ps > 0 and metric_diff.l3_hit_ratio > 0:
             if metric_diff.l3_hit_ratio > metric_diff.local_mem_util_ps:
                 return ResourceType.CACHE
@@ -232,9 +231,12 @@ class IsolationPolicy(metaclass=ABCMeta):
         :return: Decision whether to initiate online solorun profiling
         """
         # FIXME: or fg doesn't have solorun data
+        logger = logging.getLogger(__name__)
 
         cur_num_threads = self._fg_wl.number_of_threads
-        if self._fg_wl.avg_solorun_data is None or self._cached_fg_num_threads != cur_num_threads:
+        if self._fg_wl.avg_solorun_data is None \
+                or cur_num_threads is not 0 and self._cached_fg_num_threads != cur_num_threads:
+            logger.debug(f'number of threads. cached: {self._cached_fg_num_threads}, current : {cur_num_threads}')
             self._cached_fg_num_threads = cur_num_threads
             return True
         else:
