@@ -142,8 +142,19 @@ class BasicMetric:
 class MetricDiff:
     def __init__(self, curr: BasicMetric, prev: BasicMetric) -> None:
         self._l3_hit_ratio = curr.l3hit_ratio - prev.l3hit_ratio
-        self._local_mem_ps = curr.local_mem_ps / prev.local_mem_ps - 1
-        self._remote_mem_ps = curr.remote_mem_ps / prev.remote_mem_ps - 1
+
+        if curr.local_mem_ps == 0:
+            # TODO: is it fair?
+            self._local_mem_ps = 1
+        else:
+            self._local_mem_ps = curr.local_mem_ps / prev.local_mem_ps - 1
+
+        if curr.remote_mem_ps == 0:
+            # TODO: is it fair?
+            self._remote_mem_ps = 1
+        else:
+            self._remote_mem_ps = curr.remote_mem_ps / prev.remote_mem_ps - 1
+
         self._instruction_ps = curr.instruction_ps / prev.instruction_ps - 1
 
     @property
