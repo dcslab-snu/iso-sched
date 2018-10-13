@@ -2,10 +2,9 @@
 
 import logging
 
-from isolating_controller.isolation.isolators.affinity import AffinityIsolator
 from .base_policy import IsolationPolicy
 from .. import ResourceType
-from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 

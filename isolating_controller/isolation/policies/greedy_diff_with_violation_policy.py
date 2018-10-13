@@ -4,7 +4,7 @@ import logging
 
 from .greedy_diff_policy import GreedyDiffPolicy
 from .. import ResourceType
-from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
