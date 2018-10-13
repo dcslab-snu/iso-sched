@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 
-from .base_isolator import Isolator
+from .base import Isolator
 from .. import NextStep
 from ...metric_container.basic_metric import MetricDiff
 from ...utils import DVFS

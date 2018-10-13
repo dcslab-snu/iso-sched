@@ -2,13 +2,13 @@
 
 import logging
 
-from .base_policy import IsolationPolicy
+from .base import IsolationPolicy
 from .. import ResourceType
 from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
-class GreedyDiffPolicy(IsolationPolicy):
+class GreedyPolicy(IsolationPolicy):
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         super().__init__(fg_wl, bg_wl)
 

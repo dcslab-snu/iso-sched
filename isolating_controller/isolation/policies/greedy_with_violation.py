@@ -2,13 +2,13 @@
 
 import logging
 
-from .greedy_diff_policy import GreedyDiffPolicy
+from .greedy import GreedyPolicy
 from .. import ResourceType
 from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
-class GreedyDiffWViolationPolicy(GreedyDiffPolicy):
+class GreedyWViolationPolicy(GreedyPolicy):
     VIOLATION_THRESHOLD = 3
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
@@ -38,7 +38,7 @@ class GreedyDiffWViolationPolicy(GreedyDiffPolicy):
 
             self._violation_count += 1
 
-            if self._violation_count >= GreedyDiffWViolationPolicy.VIOLATION_THRESHOLD:
+            if self._violation_count >= GreedyWViolationPolicy.VIOLATION_THRESHOLD:
                 logger.info('new isolator is required due to violation')
                 self.set_idle_isolator()
                 self._violation_count = 0

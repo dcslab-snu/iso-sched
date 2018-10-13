@@ -2,13 +2,13 @@
 
 import logging
 
-from .diff_policy import DiffPolicy
+from .defensive import DefensivePolicy
 from .. import ResourceType
 from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
-class DiffWViolationPolicy(DiffPolicy):
+class DefensiveWViolationPolicy(DefensivePolicy):
     VIOLATION_THRESHOLD = 3
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
@@ -35,7 +35,7 @@ class DiffWViolationPolicy(DiffPolicy):
 
             self._violation_count += 1
 
-            if self._violation_count >= DiffWViolationPolicy.VIOLATION_THRESHOLD:
+            if self._violation_count >= DefensiveWViolationPolicy.VIOLATION_THRESHOLD:
                 logger.info('new isolator is required due to violation')
                 self.set_idle_isolator()
                 self._clear_flags()

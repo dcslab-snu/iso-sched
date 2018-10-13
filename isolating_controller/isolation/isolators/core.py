@@ -3,7 +3,7 @@
 import logging
 from typing import Optional, Tuple
 
-from .base_isolator import Isolator
+from .base import Isolator
 from .. import NextStep, ResourceType
 from ...metric_container.basic_metric import MetricDiff
 from ...workload import Workload

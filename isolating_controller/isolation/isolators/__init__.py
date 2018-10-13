@@ -2,7 +2,7 @@
 
 
 from .affinity import AffinityIsolator
-from .base_isolator import Isolator
+from .base import Isolator
 from .cache import CacheIsolator
 from .core import CoreIsolator
 from .idle import IdleIsolator

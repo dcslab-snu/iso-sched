@@ -13,8 +13,6 @@ from ...workload import Workload
 
 class IsolationPolicy(metaclass=ABCMeta):
     _IDLE_ISOLATOR: IdleIsolator = IdleIsolator()
-    # FIXME : _CPU_THRESHOLD needs test
-    _CPU_THRESHOLD = 0.1
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         self._fg_wl = fg_wl
@@ -227,7 +225,6 @@ class IsolationPolicy(metaclass=ABCMeta):
         This function checks if the profiling procedure should be called
         :return: Decision whether to initiate online solorun profiling
         """
-        # FIXME: or fg doesn't have solorun data
         logger = logging.getLogger(__name__)
 
         cur_num_threads = self._fg_wl.number_of_threads

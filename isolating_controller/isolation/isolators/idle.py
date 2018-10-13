@@ -1,6 +1,6 @@
 # coding: UTF-8
 
-from .base_isolator import Isolator
+from .base import Isolator
 from .. import NextStep
 
 

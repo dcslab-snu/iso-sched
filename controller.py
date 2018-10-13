@@ -22,7 +22,7 @@ from pika.spec import Basic
 import isolating_controller
 from isolating_controller.isolation import NextStep
 from isolating_controller.isolation.isolators import Isolator
-from isolating_controller.isolation.policies import GreedyDiffWViolationPolicy, IsolationPolicy
+from isolating_controller.isolation.policies import GreedyWViolationPolicy, IsolationPolicy
 from isolating_controller.metric_container.basic_metric import BasicMetric
 from isolating_controller.workload import Workload
 from pending_queue import PendingQueue
@@ -47,7 +47,7 @@ class MainController(metaclass=Singleton):
         self._rmq_host = 'localhost'
         self._rmq_creation_queue = 'workload_creation'
 
-        self._pending_wl = PendingQueue(GreedyDiffWViolationPolicy)
+        self._pending_wl = PendingQueue(GreedyWViolationPolicy)
         self._control_thread = ControlThread(self._pending_wl)
 
     def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
