@@ -17,12 +17,15 @@ class GreedyDiffWViolationPolicy(GreedyDiffPolicy):
         self._violation_count: int = 0
 
     def _check_violation(self) -> bool:
+        if isinstance(self._cur_isolator, AffinityIsolator):
+            return False
+
         resource: ResourceType = self.contentious_resource()
 
         return \
             resource is ResourceType.CACHE and not isinstance(self._cur_isolator, CacheIsolator) \
-            or resource is ResourceType.MEMORY and (not isinstance(self._cur_isolator, MemoryIsolator)
-                                                    and not isinstance(self._cur_isolator, SchedIsolator))
+            or resource is ResourceType.MEMORY and not (isinstance(self._cur_isolator, MemoryIsolator)
+                                                        or isinstance(self._cur_isolator, SchedIsolator))
 
     @property
     def new_isolator_needed(self) -> bool:

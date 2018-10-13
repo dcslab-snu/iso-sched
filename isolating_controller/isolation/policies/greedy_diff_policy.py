@@ -24,7 +24,7 @@ class GreedyDiffPolicy(IsolationPolicy):
         logger.debug('looking for new isolation...')
 
         # if foreground is web server (CPU critical)
-        if len(self._fg_wl.bound_cores) < self._fg_wl.number_of_threads:
+        if len(self._fg_wl.bound_cores) * 2 < self._fg_wl.number_of_threads:
             if AffinityIsolator in self._isolator_map and not self._isolator_map[AffinityIsolator].is_max_level:
                 self._cur_isolator = self._isolator_map[AffinityIsolator]
                 logger.info(f'Starting {self._cur_isolator.__class__.__name__}...')
