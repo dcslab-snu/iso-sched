@@ -27,26 +27,26 @@ class GreedyDiffPolicy(IsolationPolicy):
         if len(self._fg_wl.bound_cores) < self._fg_wl.number_of_threads:
             if AffinityIsolator in self._isolator_map and not self._isolator_map[AffinityIsolator].is_max_level:
                 self._cur_isolator = self._isolator_map[AffinityIsolator]
-                logger.info(f'AffinityIsolator')
+                logger.info(f'Starting {self._cur_isolator.__class__.__name__}...')
                 return True
 
         resource: ResourceType = self.contentious_resource()
 
         if resource is ResourceType.CACHE:
             self._cur_isolator = self._isolator_map[CacheIsolator]
-            logger.info(f'Resource Type: {ResourceType.CACHE.name}, CacheIsolation')
+            logger.info(f'Starting {self._cur_isolator.__class__.__name__}...')
             return True
 
         elif not self._is_mem_isolated and resource is ResourceType.MEMORY:
             self._cur_isolator = self._isolator_map[MemoryIsolator]
             self._is_mem_isolated = True
-            logger.info(f'Resource Type: {ResourceType.MEMORY.name}, MemoryIsolation')
+            logger.info(f'Starting {self._cur_isolator.__class__.__name__}...')
             return True
 
         elif resource is ResourceType.MEMORY:
             self._cur_isolator = self._isolator_map[SchedIsolator]
             self._is_mem_isolated = False
-            logger.info(f'Resource Type: {ResourceType.MEMORY.name}, SchedIsolation')
+            logger.info(f'Starting {self._cur_isolator.__class__.__name__}...')
             return True
 
         else:

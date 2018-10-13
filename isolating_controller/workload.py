@@ -148,12 +148,7 @@ class Workload:
         self._avg_solorun_data = new_data
 
     def calc_metric_diff(self) -> MetricDiff:
-        logger = logging.getLogger(__name__)
-
         curr_metric: BasicMetric = self._metrics[0]
-        logger.debug(f'solorun_data L3 hit ratio: {self._avg_solorun_data.l3hit_ratio}, '
-                     f'Local Mem BW ps : {self._avg_solorun_data.local_mem_ps}, '
-                     f'Instruction ps. : {self._avg_solorun_data.instruction_ps}')
         return MetricDiff(curr_metric, self._avg_solorun_data)
 
     def all_child_tid(self) -> Tuple[int, ...]:
