@@ -239,7 +239,7 @@ class ControlThread(Thread):
             group.reset()
             del self._isolation_groups[group]
             if group.in_solorun_profiling:
-                group.stop_solorun_profiling()
+                group.background_workload.resume()
                 del self._solorun_count[group]
 
     def run(self) -> None:
