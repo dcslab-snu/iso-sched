@@ -74,16 +74,21 @@ class SchedIsolator(Isolator):
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
-        if self.is_min_level or self.is_max_level \
-                or abs(diff_of_diff) <= SchedIsolator._DOD_THRESHOLD \
+        if abs(diff_of_diff) <= SchedIsolator._DOD_THRESHOLD \
                 or abs(curr_diff) <= SchedIsolator._DOD_THRESHOLD:
             return NextStep.STOP
 
         elif curr_diff > 0:
-            return NextStep.WEAKEN
+            if self.is_min_level:
+                return NextStep.STOP
+            else:
+                return NextStep.WEAKEN
 
         else:
-            return NextStep.STRENGTHEN
+            if self.is_max_level:
+                return NextStep.STOP
+            else:
+                return NextStep.STRENGTHEN
 
     def reset(self) -> None:
         if self._background_wl.is_running:

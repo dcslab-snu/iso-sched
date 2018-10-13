@@ -51,7 +51,7 @@ class CacheIsolator(Isolator):
     @property
     def is_min_level(self) -> bool:
         # FIXME: hard coded
-        return self._cur_step is None or self._cur_step - ResCtrl.STEP <= ResCtrl.MIN_BITS
+        return self._cur_step is None or self._cur_step - ResCtrl.STEP < ResCtrl.MIN_BITS
 
     def enforce(self) -> None:
         logger = logging.getLogger(__name__)
@@ -102,16 +102,21 @@ class CacheIsolator(Isolator):
         logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
-        if self.is_min_level or self.is_max_level \
-                or abs(diff_of_diff) <= CacheIsolator._DOD_THRESHOLD \
+        if abs(diff_of_diff) <= CacheIsolator._DOD_THRESHOLD \
                 or abs(curr_diff) <= CacheIsolator._DOD_THRESHOLD:
             return NextStep.STOP
 
         elif curr_diff > 0:
-            return NextStep.WEAKEN
+            if self.is_min_level:
+                return NextStep.STOP
+            else:
+                return NextStep.WEAKEN
 
         else:
-            return NextStep.STRENGTHEN
+            if self.is_max_level:
+                return NextStep.STOP
+            else:
+                return NextStep.STRENGTHEN
 
     def reset(self) -> None:
         masks = [ResCtrl.MIN_MASK] * (max(numa_topology.cur_online_nodes()) + 1)
