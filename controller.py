@@ -237,6 +237,9 @@ class ControlThread(Thread):
             # remove from containers
             group.reset()
             del self._isolation_groups[group]
+            if group.in_solorun_profiling:
+                group.stop_solorun_profiling()
+                del self._solorun_count[group]
 
     def run(self) -> None:
         logger = logging.getLogger(__name__)
