@@ -172,6 +172,7 @@ class ControlThread(Thread):
 
                 # TODO: first expression can lead low reactivity
                 elif iteration_num % int(self._profile_interval / self._interval) == 0 and group.profile_needed():
+                    logger.info('Starting solorun profiling...')
                     group.start_solorun_profiling()
                     self._solorun_count[group] = iteration_num
                     group.set_idle_isolator()

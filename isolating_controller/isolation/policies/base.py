@@ -199,11 +199,20 @@ class IsolationPolicy(metaclass=ABCMeta):
         """
         logger = logging.getLogger(__name__)
 
+        if self._fg_wl.avg_solorun_data is None:
+            logger.debug('initialize solorun data')
+            self._cached_fg_num_threads = self._fg_wl.number_of_threads
+            return True
+
+        if not self._fg_wl.calc_metric_diff().verify():
+            logger.debug(f'fail to verify solorun data. {{{self._fg_wl.calc_metric_diff()}}}')
+            self._cached_fg_num_threads = self._fg_wl.number_of_threads
+            return True
+
         cur_num_threads = self._fg_wl.number_of_threads
-        if self._fg_wl.avg_solorun_data is None \
-                or cur_num_threads is not 0 and self._cached_fg_num_threads != cur_num_threads:
+        if cur_num_threads is not 0 and self._cached_fg_num_threads != cur_num_threads:
             logger.debug(f'number of threads. cached: {self._cached_fg_num_threads}, current : {cur_num_threads}')
             self._cached_fg_num_threads = cur_num_threads
             return True
-        else:
-            return False
+
+        return False

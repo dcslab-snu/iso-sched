@@ -173,6 +173,9 @@ class MetricDiff:
     def instruction_ps(self) -> float:
         return self._instruction_ps
 
+    def verify(self) -> bool:
+        return self._local_mem_ps <= 1 and self._instruction_ps <= 1
+
     def __repr__(self) -> str:
         return f'L3 hit ratio diff: {self._l3_hit_ratio:>6.03f}, ' \
                f'Local Memory access diff: {self._local_mem_ps:>6.03f}, ' \
