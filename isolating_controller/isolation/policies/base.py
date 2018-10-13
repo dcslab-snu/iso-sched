@@ -155,7 +155,6 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._in_solorun_profile = True
 
         # suspend all workloads and their perf agents
-        self._fg_wl.pause()
         self._bg_wl.pause()
 
         self._fg_wl.metrics.clear()
@@ -165,13 +164,9 @@ class IsolationPolicy(metaclass=ABCMeta):
             isolator.store_cur_config()
             isolator.reset()
 
-        self._fg_wl.resume()
-
     def stop_solorun_profiling(self) -> None:
         if not self._in_solorun_profile:
             raise ValueError('Start solorun profiling first!')
-
-        self._fg_wl.pause()
 
         logger = logging.getLogger(__name__)
         logger.debug(f'number of collected solorun data: {len(self._fg_wl.metrics)}')
@@ -186,8 +181,6 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         self._fg_wl.metrics.clear()
 
-        # resume all
-        self._fg_wl.resume()
         self._bg_wl.resume()
 
         self._in_solorun_profile = False
