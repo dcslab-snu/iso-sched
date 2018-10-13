@@ -1,6 +1,5 @@
 # coding: UTF-8
 
-import logging
 from collections import deque
 from itertools import chain
 from typing import Deque, Iterable, Optional, Set, Tuple
@@ -15,7 +14,6 @@ from .utils.cgroup import Cpu, CpuSet
 
 class Workload:
     """
-    Workload class
     This class abstracts the process and contains the related metrics to represent its characteristics
     ControlThread schedules the groups of `Workload' instances to enforce their scheduling decisions
     """
@@ -30,7 +28,6 @@ class Workload:
 
         self._proc_info = psutil.Process(pid)
         self._perf_info = psutil.Process(perf_pid)
-        self._inst_diff: float = None
 
         self._cgroup_cpuset = CpuSet(self.group_name)
         self._cgroup_cpu = Cpu(self.group_name)
@@ -123,10 +120,6 @@ class Workload:
     @property
     def is_running(self) -> bool:
         return self._proc_info.is_running()
-
-    @property
-    def inst_diff(self) -> float:
-        return self._inst_diff
 
     @property
     def group_name(self) -> str:
