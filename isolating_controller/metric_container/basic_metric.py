@@ -144,16 +144,12 @@ class MetricDiff:
         self._l3_hit_ratio = curr.l3hit_ratio - prev.l3hit_ratio
 
         if curr.local_mem_ps == 0:
+            self._local_mem_ps = 0
+        elif prev.local_mem_ps == 0:
             # TODO: is it fair?
-            self._local_mem_ps = 1
+            self._local_mem_ps = .99
         else:
             self._local_mem_ps = curr.local_mem_ps / prev.local_mem_ps - 1
-
-        if curr.remote_mem_ps == 0:
-            # TODO: is it fair?
-            self._remote_mem_ps = 1
-        else:
-            self._remote_mem_ps = curr.remote_mem_ps / prev.remote_mem_ps - 1
 
         self._instruction_ps = curr.instruction_ps / prev.instruction_ps - 1
 
@@ -164,10 +160,6 @@ class MetricDiff:
     @property
     def local_mem_util_ps(self) -> float:
         return self._local_mem_ps
-
-    @property
-    def remote_mem_ps(self) -> float:
-        return self._remote_mem_ps
 
     @property
     def instruction_ps(self) -> float:
