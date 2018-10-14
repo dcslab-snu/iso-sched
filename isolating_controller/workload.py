@@ -15,7 +15,7 @@ from .utils.cgroup import Cpu, CpuSet
 class Workload:
     """
     This class abstracts the process and contains the related metrics to represent its characteristics
-    ControlThread schedules the groups of `Workload' instances to enforce their scheduling decisions
+    Controller schedules the groups of `Workload' instances to enforce their scheduling decisions
     """
 
     def __init__(self, name: str, wl_type: str, pid: int, perf_pid: int, perf_interval: int) -> None:

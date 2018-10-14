@@ -3,139 +3,29 @@
 
 import argparse
 import datetime
-import functools
-import json
 import logging
 import os
 import subprocess
 import sys
 import time
-from threading import Thread
 from typing import Dict, Optional
 
-import pika
 import psutil
-from pika import BasicProperties
-from pika.adapters.blocking_connection import BlockingChannel
-from pika.spec import Basic
 
 import isolating_controller
 from isolating_controller.isolation import NextStep
 from isolating_controller.isolation.isolators import Isolator
 from isolating_controller.isolation.policies import GreedyWViolationPolicy, IsolationPolicy
-from isolating_controller.metric_container.basic_metric import BasicMetric
-from isolating_controller.workload import Workload
 from pending_queue import PendingQueue
+from polling_thread import PollingThread
 from swap_iso import SwapIsolator
 
 MIN_PYTHON = (3, 6)
 
 
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
-class MainController(metaclass=Singleton):
+class Controller:
     def __init__(self, metric_buf_size: int) -> None:
-        self._metric_buf_size = metric_buf_size
-
-        self._rmq_host = 'localhost'
-        self._rmq_creation_queue = 'workload_creation'
-
-        self._pending_wl = PendingQueue(GreedyWViolationPolicy)
-        self._control_thread = ControlThread(self._pending_wl)
-
-    def _cbk_wl_creation(self, ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
-        ch.basic_ack(method.delivery_tag)
-
-        arr = body.decode().strip().split(',')
-
-        logger = logging.getLogger('monitoring.workload_creation')
-        logger.debug(f'{arr} is received from workload_creation queue')
-
-        if len(arr) != 5:
-            return
-
-        wl_identifier, wl_type, pid, perf_pid, perf_interval = arr
-        pid = int(pid)
-        perf_pid = int(perf_pid)
-        perf_interval = int(perf_interval)
-        item = wl_identifier.split('_')
-        wl_name = item[0]
-
-        if not psutil.pid_exists(pid):
-            return
-
-        workload = Workload(wl_name, wl_type, pid, perf_pid, perf_interval)
-        if wl_type == 'bg':
-            logger.info(f'{workload} is background process')
-        else:
-            logger.info(f'{workload} is foreground process')
-
-        self._pending_wl.add(workload)
-
-        wl_queue_name = '{}({})'.format(wl_name, pid)
-        ch.queue_declare(wl_queue_name)
-        ch.basic_consume(functools.partial(self._cbk_wl_monitor, workload), wl_queue_name)
-
-    def _cbk_wl_monitor(self, workload: Workload,
-                        ch: BlockingChannel, method: Basic.Deliver, _: BasicProperties, body: bytes) -> None:
-        metric = json.loads(body.decode())
-        ch.basic_ack(method.delivery_tag)
-
-        item = BasicMetric(metric['l2miss'],
-                           metric['l3miss'],
-                           metric['instructions'],
-                           metric['cycles'],
-                           metric['stall_cycles'],
-                           metric['wall_cycles'],
-                           metric['intra_coh'],
-                           metric['inter_coh'],
-                           metric['llc_size'],
-                           metric['local_mem'],
-                           metric['remote_mem'],
-                           workload.perf_interval)
-
-        logger = logging.getLogger(f'monitoring.metric.{workload}')
-        logger.debug(f'{metric} is given from ')
-
-        metric_que = workload.metrics
-
-        if len(metric_que) == self._metric_buf_size:
-            metric_que.pop()
-
-        metric_que.appendleft(item)
-
-    def run(self) -> None:
-        logger = logging.getLogger('monitoring')
-
-        self._control_thread.start()
-
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=self._rmq_host))
-        channel = connection.channel()
-
-        channel.queue_declare(self._rmq_creation_queue)
-        channel.basic_consume(self._cbk_wl_creation, self._rmq_creation_queue)
-
-        try:
-            logger.debug('starting consuming thread')
-            channel.start_consuming()
-
-        except KeyboardInterrupt:
-            channel.close()
-            connection.close()
-
-
-class ControlThread(Thread):
-    def __init__(self, pending_queue: PendingQueue) -> None:
-        super().__init__(daemon=True)
-
-        self._pending_queue: PendingQueue = pending_queue
+        self._pending_queue: PendingQueue = PendingQueue(GreedyWViolationPolicy)
 
         self._interval: float = 0.2  # scheduling interval (sec)
         self._profile_interval: float = 1.0  # check interval for phase change (sec)
@@ -143,6 +33,8 @@ class ControlThread(Thread):
         self._solorun_count: Dict[IsolationPolicy, Optional[int]] = dict()
 
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
+
+        self._polling_thread = PollingThread(metric_buf_size, self._pending_queue)
 
         # Swapper init
         self._swapper: SwapIsolator = SwapIsolator(self._isolation_groups)
@@ -243,6 +135,8 @@ class ControlThread(Thread):
                 del self._solorun_count[group]
 
     def run(self) -> None:
+        self._polling_thread.start()
+
         logger = logging.getLogger(__name__)
         logger.info('starting isolation loop')
 
@@ -284,7 +178,7 @@ def main() -> None:
     monitoring_logger.addHandler(stream_handler)
     monitoring_logger.addHandler(file_handler)
 
-    controller = MainController(args.buf_size)
+    controller = Controller(args.buf_size)
     controller.run()
 
 
