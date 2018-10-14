@@ -1,6 +1,7 @@
 # coding: UTF-8
 
 import logging
+from typing import ClassVar
 
 from .greedy import GreedyPolicy
 from .. import ResourceType
@@ -9,7 +10,7 @@ from ...workload import Workload
 
 
 class GreedyWViolationPolicy(GreedyPolicy):
-    VIOLATION_THRESHOLD = 3
+    VIOLATION_THRESHOLD: ClassVar[int] = 3
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         super().__init__(fg_wl, bg_wl)

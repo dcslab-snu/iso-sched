@@ -2,14 +2,14 @@
 
 
 import subprocess
-from typing import Iterable, Set
+from typing import ClassVar, Iterable, Set
 
 from .base import BaseCgroup
 from ..hyphen import convert_to_set
 
 
 class CpuSet(BaseCgroup):
-    CONTROLLER = 'cpuset'
+    CONTROLLER: ClassVar[str] = 'cpuset'
 
     def assign_cpus(self, core_set: Iterable[int]) -> None:
         core_ids = ','.join(map(str, core_set))

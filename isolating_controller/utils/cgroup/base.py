@@ -5,12 +5,12 @@ import grp
 import os
 import subprocess
 from abc import ABCMeta
-from typing import Iterable
+from typing import ClassVar, Iterable
 
 
 class BaseCgroup(metaclass=ABCMeta):
-    MOUNT_POINT = '/sys/fs/cgroup'
-    CONTROLLER = str()
+    MOUNT_POINT: ClassVar[str] = '/sys/fs/cgroup'
+    CONTROLLER: ClassVar[str] = str()
 
     def __init__(self, group_name: str) -> None:
         self._group_name: str = group_name

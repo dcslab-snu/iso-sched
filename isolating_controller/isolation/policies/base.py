@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Type
+from typing import ClassVar, Dict, Type
 
 from .. import ResourceType
 from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
@@ -12,7 +12,7 @@ from ...workload import Workload
 
 
 class IsolationPolicy(metaclass=ABCMeta):
-    _IDLE_ISOLATOR: IdleIsolator = IdleIsolator()
+    _IDLE_ISOLATOR: ClassVar[IdleIsolator] = IdleIsolator()
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         self._fg_wl = fg_wl
