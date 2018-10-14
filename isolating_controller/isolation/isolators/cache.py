@@ -4,16 +4,12 @@ import logging
 from typing import Optional, Tuple
 
 from .base import Isolator
-from .. import NextStep
 from ...metric_container.basic_metric import MetricDiff
 from ...utils import ResCtrl, numa_topology
 from ...workload import Workload
 
 
 class CacheIsolator(Isolator):
-    _DOD_THRESHOLD = 0.005
-    _FORCE_THRESHOLD = 0.1
-
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
@@ -21,6 +17,10 @@ class CacheIsolator(Isolator):
         self._cur_step: Optional[int] = None
 
         self._stored_config: Optional[Tuple[int, int]] = None
+
+    @classmethod
+    def _get_metric_type_from(cls, metric_diff: MetricDiff) -> float:
+        return metric_diff.l3_hit_ratio
 
     def strengthen(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
@@ -72,51 +72,6 @@ class CacheIsolator(Isolator):
             masks = [ResCtrl.MIN_MASK, ResCtrl.MIN_MASK]
             masks[self._background_wl.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
             self._background_wl.resctrl.assign_llc(*masks)
-
-    def _first_decision(self, metric_diff: MetricDiff) -> NextStep:
-        curr_diff = metric_diff.l3_hit_ratio
-
-        logger = logging.getLogger(__name__)
-        logger.debug(f'current diff: {curr_diff:>7.4f}')
-
-        if curr_diff < 0:
-            if self.is_max_level:
-                return NextStep.STOP
-            else:
-                return NextStep.STRENGTHEN
-        elif curr_diff <= CacheIsolator._FORCE_THRESHOLD:
-            return NextStep.STOP
-        else:
-            if self.is_min_level:
-                return NextStep.STOP
-            else:
-                return NextStep.WEAKEN
-
-    # TODO: consider turn off cache partitioning
-    def _monitoring_result(self, prev_metric_diff: MetricDiff, cur_metric_diff: MetricDiff) -> NextStep:
-        curr_diff = cur_metric_diff.l3_hit_ratio
-        prev_diff = prev_metric_diff.l3_hit_ratio
-        diff_of_diff = curr_diff - prev_diff
-
-        logger = logging.getLogger(__name__)
-        logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
-        logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
-
-        if abs(diff_of_diff) <= CacheIsolator._DOD_THRESHOLD \
-                or abs(curr_diff) <= CacheIsolator._DOD_THRESHOLD:
-            return NextStep.STOP
-
-        elif curr_diff > 0:
-            if self.is_min_level:
-                return NextStep.STOP
-            else:
-                return NextStep.WEAKEN
-
-        else:
-            if self.is_max_level:
-                return NextStep.STOP
-            else:
-                return NextStep.STRENGTHEN
 
     def reset(self) -> None:
         masks = [ResCtrl.MIN_MASK] * (max(numa_topology.cur_online_nodes()) + 1)

@@ -4,15 +4,11 @@ import logging
 from typing import Optional
 
 from .base import Isolator
-from .. import NextStep
 from ...metric_container.basic_metric import MetricDiff
 from ...workload import Workload
 
 
 class SchedIsolator(Isolator):
-    _DOD_THRESHOLD = 0.005
-    _FORCE_THRESHOLD = 0.1
-
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
@@ -20,6 +16,10 @@ class SchedIsolator(Isolator):
         self._cur_step = background_wl.orig_bound_cores[0]
 
         self._stored_config: Optional[int] = None
+
+    @classmethod
+    def _get_metric_type_from(cls, metric_diff: MetricDiff) -> float:
+        return metric_diff.local_mem_util_ps
 
     def strengthen(self) -> 'SchedIsolator':
         self._cur_step += 1
@@ -45,50 +45,6 @@ class SchedIsolator(Isolator):
 
         # FIXME: hard coded
         self._background_wl.bound_cores = range(self._cur_step, self._background_wl.orig_bound_cores[-1] + 1)
-
-    def _first_decision(self, metric_diff: MetricDiff) -> NextStep:
-        curr_diff = metric_diff.local_mem_util_ps
-
-        logger = logging.getLogger(__name__)
-        logger.debug(f'current diff: {curr_diff:>7.4f}')
-
-        if curr_diff < 0:
-            if self.is_max_level:
-                return NextStep.STOP
-            else:
-                return NextStep.STRENGTHEN
-        elif curr_diff <= SchedIsolator._FORCE_THRESHOLD:
-            return NextStep.STOP
-        else:
-            if self.is_min_level:
-                return NextStep.STOP
-            else:
-                return NextStep.WEAKEN
-
-    def _monitoring_result(self, prev_metric_diff: MetricDiff, cur_metric_diff: MetricDiff) -> NextStep:
-        curr_diff = cur_metric_diff.local_mem_util_ps
-        prev_diff = prev_metric_diff.local_mem_util_ps
-        diff_of_diff = curr_diff - prev_diff
-
-        logger = logging.getLogger(__name__)
-        logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
-        logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
-
-        if abs(diff_of_diff) <= SchedIsolator._DOD_THRESHOLD \
-                or abs(curr_diff) <= SchedIsolator._DOD_THRESHOLD:
-            return NextStep.STOP
-
-        elif curr_diff > 0:
-            if self.is_min_level:
-                return NextStep.STOP
-            else:
-                return NextStep.WEAKEN
-
-        else:
-            if self.is_max_level:
-                return NextStep.STOP
-            else:
-                return NextStep.STRENGTHEN
 
     def reset(self) -> None:
         if self._background_wl.is_running:

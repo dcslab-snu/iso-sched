@@ -1,7 +1,8 @@
 # coding: UTF-8
 
+import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from .. import NextStep
 from ...metric_container.basic_metric import MetricDiff
@@ -9,6 +10,9 @@ from ...workload import Workload
 
 
 class Isolator(metaclass=ABCMeta):
+    _DOD_THRESHOLD: ClassVar[float] = 0.005
+    _FORCE_THRESHOLD: ClassVar[float] = 0.1
+
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         self._prev_metric_diff: MetricDiff = None
 
@@ -69,12 +73,53 @@ class Isolator(metaclass=ABCMeta):
         """
         self._is_first_decision = True
 
-    @abstractmethod
     def _first_decision(self, cur_metric_diff: MetricDiff) -> NextStep:
-        pass
+        curr_diff = self._get_metric_type_from(cur_metric_diff)
 
-    @abstractmethod
+        logger = logging.getLogger(__name__)
+        logger.debug(f'current diff: {curr_diff:>7.4f}')
+
+        if curr_diff < 0:
+            if self.is_max_level:
+                return NextStep.STOP
+            else:
+                return NextStep.STRENGTHEN
+        elif curr_diff <= self._FORCE_THRESHOLD:
+            return NextStep.STOP
+        else:
+            if self.is_min_level:
+                return NextStep.STOP
+            else:
+                return NextStep.WEAKEN
+
     def _monitoring_result(self, prev_metric_diff: MetricDiff, cur_metric_diff: MetricDiff) -> NextStep:
+        curr_diff = self._get_metric_type_from(cur_metric_diff)
+        prev_diff = self._get_metric_type_from(prev_metric_diff)
+        diff_of_diff = curr_diff - prev_diff
+
+        logger = logging.getLogger(__name__)
+        logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
+        logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
+
+        if abs(diff_of_diff) <= self._DOD_THRESHOLD \
+                or abs(curr_diff) <= self._DOD_THRESHOLD:
+            return NextStep.STOP
+
+        elif curr_diff > 0:
+            if self.is_min_level:
+                return NextStep.STOP
+            else:
+                return NextStep.WEAKEN
+
+        else:
+            if self.is_max_level:
+                return NextStep.STOP
+            else:
+                return NextStep.STRENGTHEN
+
+    @classmethod
+    @abstractmethod
+    def _get_metric_type_from(cls, metric_diff: MetricDiff) -> float:
         pass
 
     def decide_next_step(self) -> NextStep:

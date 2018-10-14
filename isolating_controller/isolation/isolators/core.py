@@ -1,7 +1,7 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, ClassVar
 
 from .base import Isolator
 from .. import NextStep, ResourceType
@@ -10,9 +10,7 @@ from ...workload import Workload
 
 
 class CoreIsolator(Isolator):
-    _DOD_THRESHOLD = 0.005
-    _FORCE_THRESHOLD = 0.1
-    _INST_PS_THRESHOLD = -0.5
+    _INST_PS_THRESHOLD: ClassVar[float] = -0.5
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
