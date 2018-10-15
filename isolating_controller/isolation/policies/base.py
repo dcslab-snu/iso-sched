@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import ClassVar, Dict, Type
+from typing import ClassVar, Dict, Tuple, Type
 
 from .. import ResourceType
 from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
@@ -52,29 +52,23 @@ class IsolationPolicy(metaclass=ABCMeta):
         pass
 
     def contentious_resource(self) -> ResourceType:
+        return self.contentious_resources()[0][0]
+
+    def contentious_resources(self) -> Tuple[Tuple[ResourceType, float], ...]:
         metric_diff: MetricDiff = self._fg_wl.calc_metric_diff()
 
         logger = logging.getLogger(__name__)
         logger.info(f'foreground : {metric_diff}')
         logger.info(f'background : {self._bg_wl.calc_metric_diff()}')
 
-        if metric_diff.local_mem_util_ps > 0 and metric_diff.l3_hit_ratio > 0:
-            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util_ps:
-                return ResourceType.CACHE
-            else:
-                return ResourceType.MEMORY
+        resources = ((ResourceType.CACHE, metric_diff.l3_hit_ratio),
+                     (ResourceType.MEMORY, metric_diff.local_mem_util_ps))
 
-        elif metric_diff.local_mem_util_ps < 0 < metric_diff.l3_hit_ratio:
-            return ResourceType.MEMORY
-
-        elif metric_diff.l3_hit_ratio < 0 < metric_diff.local_mem_util_ps:
-            return ResourceType.CACHE
+        if all(v > 0 for m, v in resources):
+            return tuple(sorted(resources, key=lambda x: x[1], reverse=True))
 
         else:
-            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util_ps:
-                return ResourceType.MEMORY
-            else:
-                return ResourceType.CACHE
+            return tuple(sorted(resources, key=lambda x: x[1]))
 
     @property
     def foreground_workload(self) -> Workload:
@@ -153,6 +147,7 @@ class IsolationPolicy(metaclass=ABCMeta):
             raise ValueError('Stop the ongoing solorun profiling first!')
 
         self._in_solorun_profile = True
+        self._cached_fg_num_threads = self._fg_wl.number_of_threads
 
         # suspend all workloads and their perf agents
         self._bg_wl.pause()
@@ -167,8 +162,6 @@ class IsolationPolicy(metaclass=ABCMeta):
     def stop_solorun_profiling(self) -> None:
         if not self._in_solorun_profile:
             raise ValueError('Start solorun profiling first!')
-
-        self._cached_fg_num_threads = self._fg_wl.number_of_threads
 
         logger = logging.getLogger(__name__)
         logger.debug(f'number of collected solorun data: {len(self._fg_wl.metrics)}')
