@@ -13,6 +13,7 @@ from ...workload import Workload
 
 class IsolationPolicy(metaclass=ABCMeta):
     _IDLE_ISOLATOR: ClassVar[IdleIsolator] = IdleIsolator()
+    _VERIFY_THRESHOLD: ClassVar[int] = 3
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         self._fg_wl = fg_wl
@@ -30,6 +31,7 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         self._in_solorun_profile: bool = False
         self._cached_fg_num_threads: int = fg_wl.number_of_threads
+        self._solorun_verify_violation_count: int = 0
 
     def __hash__(self) -> int:
         return id(self)
@@ -148,6 +150,7 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         self._in_solorun_profile = True
         self._cached_fg_num_threads = self._fg_wl.number_of_threads
+        self._solorun_verify_violation_count = 0
 
         # suspend all workloads and their perf agents
         self._bg_wl.pause()
@@ -192,8 +195,11 @@ class IsolationPolicy(metaclass=ABCMeta):
             return True
 
         if not self._fg_wl.calc_metric_diff().verify():
-            logger.debug(f'fail to verify solorun data. {{{self._fg_wl.calc_metric_diff()}}}')
-            return True
+            self._solorun_verify_violation_count += 1
+
+            if self._solorun_verify_violation_count == self._VERIFY_THRESHOLD:
+                logger.debug(f'fail to verify solorun data. {{{self._fg_wl.calc_metric_diff()}}}')
+                return True
 
         cur_num_threads = self._fg_wl.number_of_threads
         if cur_num_threads is not 0 and self._cached_fg_num_threads != cur_num_threads:
