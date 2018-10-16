@@ -2,18 +2,18 @@
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Type
+from typing import ClassVar, Dict, Tuple, Type
 
 from .. import ResourceType
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, Isolator, MemoryIsolator
+from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
+from ..isolators.affinity import AffinityIsolator
 from ...metric_container.basic_metric import BasicMetric, MetricDiff
 from ...workload import Workload
 
 
 class IsolationPolicy(metaclass=ABCMeta):
-    _IDLE_ISOLATOR: IdleIsolator = IdleIsolator()
-    # FIXME : _CPU_THRESHOLD needs test
-    _CPU_THRESHOLD = 0.1
+    _IDLE_ISOLATOR: ClassVar[IdleIsolator] = IdleIsolator()
+    _VERIFY_THRESHOLD: ClassVar[int] = 3
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         self._fg_wl = fg_wl
@@ -21,8 +21,9 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         self._isolator_map: Dict[Type[Isolator], Isolator] = dict((
             (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
+            (AffinityIsolator, AffinityIsolator(self._fg_wl, self._bg_wl)),
+            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl)),
             (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
-            (CoreIsolator, CoreIsolator(self._fg_wl, self._bg_wl)),
         ))
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
@@ -30,6 +31,7 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         self._in_solorun_profile: bool = False
         self._cached_fg_num_threads: int = fg_wl.number_of_threads
+        self._solorun_verify_violation_count: int = 0
 
     def __hash__(self) -> int:
         return id(self)
@@ -52,35 +54,23 @@ class IsolationPolicy(metaclass=ABCMeta):
         pass
 
     def contentious_resource(self) -> ResourceType:
+        return self.contentious_resources()[0][0]
+
+    def contentious_resources(self) -> Tuple[Tuple[ResourceType, float], ...]:
         metric_diff: MetricDiff = self._fg_wl.calc_metric_diff()
-        cur_metric: BasicMetric = self._fg_wl.metrics[0]
 
         logger = logging.getLogger(__name__)
-        logger.info(repr(metric_diff))
-        logger.info(f'l3_int: {cur_metric.l3_intensity:>7.04f}, '
-                    f'mem_int: {cur_metric.mem_intensity:>7.04f}, '
-                    f'l3_util: {cur_metric.l3_util:>7.04f}')
-        if abs(cur_metric.l3_intensity) < IsolationPolicy._CPU_THRESHOLD \
-                and abs(cur_metric.mem_intensity) < IsolationPolicy._CPU_THRESHOLD:
-            return ResourceType.CPU
+        logger.info(f'foreground : {metric_diff}')
+        logger.info(f'background : {self._bg_wl.calc_metric_diff()}')
 
-        if metric_diff.local_mem_util_ps > 0 and metric_diff.l3_hit_ratio > 0:
-            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util_ps:
-                return ResourceType.CACHE
-            else:
-                return ResourceType.MEMORY
+        resources = ((ResourceType.CACHE, metric_diff.l3_hit_ratio),
+                     (ResourceType.MEMORY, metric_diff.local_mem_util_ps))
 
-        elif metric_diff.local_mem_util_ps < 0 < metric_diff.l3_hit_ratio:
-            return ResourceType.MEMORY
-
-        elif metric_diff.l3_hit_ratio < 0 < metric_diff.local_mem_util_ps:
-            return ResourceType.CACHE
+        if all(v > 0 for m, v in resources):
+            return tuple(sorted(resources, key=lambda x: x[1], reverse=True))
 
         else:
-            if metric_diff.l3_hit_ratio > metric_diff.local_mem_util_ps:
-                return ResourceType.MEMORY
-            else:
-                return ResourceType.CACHE
+            return tuple(sorted(resources, key=lambda x: x[1]))
 
     @property
     def foreground_workload(self) -> Workload:
@@ -136,25 +126,22 @@ class IsolationPolicy(metaclass=ABCMeta):
             raise ValueError('Stop the ongoing solorun profiling first!')
 
         self._in_solorun_profile = True
+        self._cached_fg_num_threads = self._fg_wl.number_of_threads
+        self._solorun_verify_violation_count = 0
 
         # suspend all workloads and their perf agents
-        self._fg_wl.pause()
         self._bg_wl.pause()
+
+        self._fg_wl.metrics.clear()
 
         # store current configuration
         for isolator in self._isolator_map.values():
             isolator.store_cur_config()
             isolator.reset()
 
-        self._fg_wl.metrics.clear()
-
-        self._fg_wl.resume()
-
     def stop_solorun_profiling(self) -> None:
         if not self._in_solorun_profile:
             raise ValueError('Start solorun profiling first!')
-
-        self._fg_wl.pause()
 
         logger = logging.getLogger(__name__)
         logger.debug(f'number of collected solorun data: {len(self._fg_wl.metrics)}')
@@ -169,8 +156,6 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         self._fg_wl.metrics.clear()
 
-        # resume all
-        self._fg_wl.resume()
         self._bg_wl.resume()
 
         self._in_solorun_profile = False
@@ -180,12 +165,25 @@ class IsolationPolicy(metaclass=ABCMeta):
         This function checks if the profiling procedure should be called
         :return: Decision whether to initiate online solorun profiling
         """
-        cur_num_threads = self._fg_wl.number_of_threads
-        if self._fg_wl.avg_solorun_data is None or self._cached_fg_num_threads != cur_num_threads:
-            self._cached_fg_num_threads = cur_num_threads
+        logger = logging.getLogger(__name__)
+
+        if self._fg_wl.avg_solorun_data is None:
+            logger.debug('initialize solorun data')
             return True
-        else:
-            return False
+
+        if not self._fg_wl.calc_metric_diff().verify():
+            self._solorun_verify_violation_count += 1
+
+            if self._solorun_verify_violation_count == self._VERIFY_THRESHOLD:
+                logger.debug(f'fail to verify solorun data. {{{self._fg_wl.calc_metric_diff()}}}')
+                return True
+
+        cur_num_threads = self._fg_wl.number_of_threads
+        if cur_num_threads is not 0 and self._cached_fg_num_threads != cur_num_threads:
+            logger.debug(f'number of threads. cached: {self._cached_fg_num_threads}, current : {cur_num_threads}')
+            return True
+
+        return False
 
     # Swapper related
 

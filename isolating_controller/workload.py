@@ -1,6 +1,5 @@
 # coding: UTF-8
 
-import logging
 from collections import deque
 from itertools import chain
 from typing import Deque, Iterable, Optional, Set, Tuple
@@ -15,9 +14,8 @@ from .utils.cgroup import Cpu, CpuSet
 
 class Workload:
     """
-    Workload class
     This class abstracts the process and contains the related metrics to represent its characteristics
-    ControlThread schedules the groups of `Workload' instances to enforce their scheduling decisions
+    Controller schedules the groups of `Workload' instances to enforce their scheduling decisions
     """
 
     def __init__(self, name: str, wl_type: str, pid: int, perf_pid: int, perf_interval: int) -> None:
@@ -30,7 +28,6 @@ class Workload:
 
         self._proc_info = psutil.Process(pid)
         self._perf_info = psutil.Process(perf_pid)
-        self._inst_diff: float = None
 
         self._cgroup_cpuset = CpuSet(self.group_name)
         self._cgroup_cpu = Cpu(self.group_name)
@@ -125,10 +122,6 @@ class Workload:
         return self._proc_info.is_running()
 
     @property
-    def inst_diff(self) -> float:
-        return self._inst_diff
-
-    @property
     def group_name(self) -> str:
         return f'{self.name}_{self.pid}'
 
@@ -148,12 +141,7 @@ class Workload:
         self._avg_solorun_data = new_data
 
     def calc_metric_diff(self) -> MetricDiff:
-        logger = logging.getLogger(__name__)
-
         curr_metric: BasicMetric = self._metrics[0]
-        logger.debug(f'solorun_data L3 hit ratio: {self._avg_solorun_data.l3hit_ratio}, '
-                     f'Local Mem BW ps : {self._avg_solorun_data.local_mem_ps}, '
-                     f'Instruction ps. : {self._avg_solorun_data.instruction_ps}')
         return MetricDiff(curr_metric, self._avg_solorun_data)
 
     def all_child_tid(self) -> Tuple[int, ...]:

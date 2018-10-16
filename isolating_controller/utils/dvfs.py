@@ -2,15 +2,15 @@
 
 import subprocess
 from pathlib import Path
-from typing import Iterable
+from typing import ClassVar, Iterable
 
 from isolating_controller.utils.cgroup import CpuSet
 
 
 class DVFS:
-    MIN = int(Path('/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq').read_text())
-    STEP = 100000
-    MAX = int(Path('/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq').read_text())
+    MIN: ClassVar[int] = int(Path('/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq').read_text())
+    STEP: ClassVar[int] = 100000
+    MAX: ClassVar[int] = int(Path('/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq').read_text())
 
     def __init__(self, group_name):
         self._group_name: str = group_name

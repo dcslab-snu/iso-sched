@@ -3,7 +3,7 @@
 import re
 import subprocess
 from pathlib import Path
-from typing import List, Pattern, Tuple
+from typing import ClassVar, List, Pattern, Tuple
 
 
 def len_of_mask(mask: str) -> int:
@@ -20,13 +20,13 @@ def bits_to_mask(bits: int) -> str:
 
 
 class ResCtrl:
-    MOUNT_POINT: Path = Path('/sys/fs/resctrl')
-    MAX_MASK: str = Path('/sys/fs/resctrl/info/L3/cbm_mask').read_text(encoding='ASCII').strip()
-    MAX_BITS: int = len_of_mask((MOUNT_POINT / 'info' / 'L3' / 'cbm_mask').read_text())
-    MIN_BITS: int = int((MOUNT_POINT / 'info' / 'L3' / 'min_cbm_bits').read_text())
-    MIN_MASK: str = bits_to_mask(MIN_BITS)
-    STEP = 1
-    _read_regex: Pattern = re.compile(r'L3:((\d+=[0-9a-fA-F]+;?)*)', re.MULTILINE)
+    MOUNT_POINT: ClassVar[Path] = Path('/sys/fs/resctrl')
+    MAX_MASK: ClassVar[str] = Path('/sys/fs/resctrl/info/L3/cbm_mask').read_text(encoding='ASCII').strip()
+    MAX_BITS: ClassVar[int] = len_of_mask((MOUNT_POINT / 'info' / 'L3' / 'cbm_mask').read_text())
+    MIN_BITS: ClassVar[int] = int((MOUNT_POINT / 'info' / 'L3' / 'min_cbm_bits').read_text())
+    MIN_MASK: ClassVar[str] = bits_to_mask(MIN_BITS)
+    STEP: ClassVar[int] = 1
+    _read_regex: ClassVar[Pattern] = re.compile(r'L3:((\d+=[0-9a-fA-F]+;?)*)', re.MULTILINE)
 
     def __init__(self, group_name: str) -> None:
         self._group_name: str = group_name

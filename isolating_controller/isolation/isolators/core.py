@@ -1,18 +1,16 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, ClassVar
 
-from .base_isolator import Isolator
+from .base import Isolator
 from .. import NextStep, ResourceType
 from ...metric_container.basic_metric import MetricDiff
 from ...workload import Workload
 
 
 class CoreIsolator(Isolator):
-    _DOD_THRESHOLD = 0.005
-    _FORCE_THRESHOLD = 0.1
-    _INST_PS_THRESHOLD = -0.5
+    _INST_PS_THRESHOLD: ClassVar[float] = -0.5
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
@@ -124,18 +122,23 @@ class CoreIsolator(Isolator):
         logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
 
         # Case1 : diff is too small to perform isolation
-        if self.is_max_level or self.is_min_level \
-                or abs(diff_of_diff) <= CoreIsolator._DOD_THRESHOLD \
+        if abs(diff_of_diff) <= CoreIsolator._DOD_THRESHOLD \
                 or abs(curr_diff) <= CoreIsolator._DOD_THRESHOLD:
             return NextStep.STOP
 
         # Case2 : FG shows lower contention than solo-run -> Slower FG or Faster BG
         elif curr_diff > 0:
-            return self._weaken_condition(cur_metric_diff.instruction_ps)
+            if self.is_min_level:
+                return NextStep.STOP
+            else:
+                return self._weaken_condition(cur_metric_diff.instruction_ps)
 
         # Case3 : FG shows higher contention than solo-run
         else:
-            return self._strengthen_condition(cur_metric_diff.instruction_ps)
+            if self.is_max_level:
+                return NextStep.STOP
+            else:
+                return self._strengthen_condition(cur_metric_diff.instruction_ps)
 
     def _weaken_condition(self, fg_instruction_ps: float) -> NextStep:
         # BG Next Step Decision

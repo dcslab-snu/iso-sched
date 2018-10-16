@@ -1,15 +1,16 @@
 # coding: UTF-8
 
 import logging
+from typing import ClassVar
 
-from .greedy_diff_policy import GreedyDiffPolicy
+from .greedy import GreedyPolicy
 from .. import ResourceType
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
+from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
 from ...workload import Workload
 
 
-class GreedyDiffWViolationPolicy(GreedyDiffPolicy):
-    VIOLATION_THRESHOLD = 3
+class GreedyWViolationPolicy(GreedyPolicy):
+    VIOLATION_THRESHOLD: ClassVar[int] = 3
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         super().__init__(fg_wl, bg_wl)
@@ -17,13 +18,15 @@ class GreedyDiffWViolationPolicy(GreedyDiffPolicy):
         self._violation_count: int = 0
 
     def _check_violation(self) -> bool:
+        if isinstance(self._cur_isolator, AffinityIsolator):
+            return False
+
         resource: ResourceType = self.contentious_resource()
 
         return \
-            resource is ResourceType.CPU and not isinstance(self._cur_isolator, CoreIsolator) \
-            or resource is ResourceType.CACHE and not isinstance(self._cur_isolator, CacheIsolator) \
-            or resource is ResourceType.MEMORY and (not isinstance(self._cur_isolator, MemoryIsolator)
-                                                    and not isinstance(self._cur_isolator, CoreIsolator))
+            resource is ResourceType.CACHE and not isinstance(self._cur_isolator, CacheIsolator) \
+            or resource is ResourceType.MEMORY and not (isinstance(self._cur_isolator, MemoryIsolator)
+                                                        or isinstance(self._cur_isolator, SchedIsolator))
 
     @property
     def new_isolator_needed(self) -> bool:
@@ -36,7 +39,7 @@ class GreedyDiffWViolationPolicy(GreedyDiffPolicy):
 
             self._violation_count += 1
 
-            if self._violation_count >= GreedyDiffWViolationPolicy.VIOLATION_THRESHOLD:
+            if self._violation_count >= GreedyWViolationPolicy.VIOLATION_THRESHOLD:
                 logger.info('new isolator is required due to violation')
                 self.set_idle_isolator()
                 self._violation_count = 0

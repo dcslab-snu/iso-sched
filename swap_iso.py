@@ -7,7 +7,7 @@ from typing import Dict, Optional, Set
 
 import psutil
 
-from isolating_controller.isolation.policies.base_policy import IsolationPolicy
+from isolating_controller.isolation.policies.base import IsolationPolicy
 from isolating_controller.workload import Workload
 
 

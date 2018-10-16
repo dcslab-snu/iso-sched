@@ -1,8 +1,10 @@
 # coding: UTF-8
 
-from .base_policy import IsolationPolicy
-from .diff_policy import DiffPolicy
-from .diff_policy_cpu import DiffCPUPolicy
-from .diff_with_violation_policy import DiffWViolationPolicy
-from .greedy_diff_policy import GreedyDiffPolicy
-from .greedy_diff_with_violation_policy import GreedyDiffWViolationPolicy
+from .aggressive import AggressivePolicy
+from .aggressive_with_violation import AggressiveWViolationPolicy
+from .base import IsolationPolicy
+from .defensive import DefensivePolicy
+from .defensive_cpu import DefensiveCPUPolicy
+from .defensive_with_violation import DefensiveWViolationPolicy
+from .greedy import GreedyPolicy
+from .greedy_with_violation import GreedyWViolationPolicy

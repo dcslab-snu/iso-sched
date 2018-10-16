@@ -1,11 +1,16 @@
 # coding: UTF-8
 
-from .base_isolator import Isolator
+from .base import Isolator
 from .. import NextStep
+from ...metric_container.basic_metric import MetricDiff
 
 
 class IdleIsolator(Isolator):
     def __init__(self) -> None:
+        pass
+
+    @classmethod
+    def _get_metric_type_from(cls, metric_diff: MetricDiff) -> float:
         pass
 
     def strengthen(self) -> 'Isolator':
