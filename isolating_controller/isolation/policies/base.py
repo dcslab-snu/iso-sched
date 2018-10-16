@@ -196,34 +196,6 @@ class IsolationPolicy(metaclass=ABCMeta):
         return self._aggr_inst_diff
 
     @property
-    def most_cont_workload(self) -> Workload:
-        fg_wl = self.foreground_workload
-        bg_wl = self.background_workload
-
-        fg_inst_diff = fg_wl.inst_diff
-        bg_inst_diff = bg_wl.inst_diff
-
-        # FIXME: Below condition is likely to fail due to too little differences between fg and bg
-        if fg_inst_diff < bg_inst_diff:
-            return fg_wl
-        else:
-            return bg_wl
-
-    @property
-    def least_cont_workload(self) -> Workload:
-        fg_wl = self.foreground_workload
-        bg_wl = self.background_workload
-
-        fg_ipc_diff = fg_wl.inst_diff
-        bg_ipc_diff = bg_wl.inst_diff
-
-        # FIXME: Below condition is likely to fail due to too little differences between fg and bg
-        if fg_ipc_diff > bg_ipc_diff:
-            return fg_wl
-        else:
-            return bg_wl
-
-    @property
     def least_mem_bw_workload(self) -> Workload:
         fg_wl = self.foreground_workload
         bg_wl = self.background_workload
