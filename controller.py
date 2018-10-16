@@ -16,9 +16,9 @@ import isolating_controller
 from isolating_controller.isolation import NextStep
 from isolating_controller.isolation.isolators import Isolator
 from isolating_controller.isolation.policies import AggressiveWViolationPolicy, IsolationPolicy
+from isolating_controller.isolation.swapper import SwapIsolator
 from pending_queue import PendingQueue
 from polling_thread import PollingThread
-from swap_iso import SwapIsolator
 
 MIN_PYTHON = (3, 6)
 

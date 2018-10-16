@@ -7,8 +7,8 @@ from typing import Dict, Optional, Set
 
 import psutil
 
-from isolating_controller.isolation.policies.base import IsolationPolicy
-from isolating_controller.workload import Workload
+from .policies.base import IsolationPolicy
+from ..workload import Workload
 
 
 class SwapNextStep(IntEnum):
