@@ -27,8 +27,6 @@ class IsolationPolicy(metaclass=ABCMeta):
         ))
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
-        self._aggr_inst_diff: float = None
-
         self._in_solorun_profile: bool = False
         self._cached_fg_num_threads: int = fg_wl.number_of_threads
         self._solorun_verify_violation_count: int = 0
@@ -189,29 +187,4 @@ class IsolationPolicy(metaclass=ABCMeta):
 
     @property
     def safe_to_swap(self) -> bool:
-        return not self._in_solorun_profile and len(self._fg_wl.metrics) > 0
-
-    @property
-    def aggr_inst(self) -> float:
-        return self._aggr_inst_diff
-
-    @property
-    def least_mem_bw_workload(self) -> Workload:
-        fg_wl = self.foreground_workload
-        bg_wl = self.background_workload
-
-        fg_mem_bw = fg_wl.metrics[0].local_mem_ps
-        bg_mem_bw = bg_wl.metrics[0].local_mem_ps
-
-        if fg_mem_bw > bg_mem_bw:
-            return bg_wl
-        else:
-            return fg_wl
-
-    # FIXME: replace to property
-    def update_aggr_instr(self) -> None:
-        fg_diff = self._fg_wl.calc_metric_diff()
-        bg_diff = self._bg_wl.calc_metric_diff()
-        self._fg_wl._ipc_diff = fg_diff.instruction_ps
-        self._bg_wl._ipc_diff = bg_diff.instruction_ps
-        self._aggr_inst_diff = fg_diff.instruction_ps + bg_diff.instruction_ps
+        return not self._in_solorun_profile and len(self._fg_wl.metrics) > 0 and self._fg_wl.calc_metric_diff().verify()

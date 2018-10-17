@@ -1,7 +1,7 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional, Tuple, ClassVar
+from typing import ClassVar, Optional, Tuple
 
 from .base import Isolator
 from .. import NextStep, ResourceType

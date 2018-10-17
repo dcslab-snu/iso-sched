@@ -97,7 +97,7 @@ class Controller:
             finally:
                 self._isolation_groups[group] += 1
 
-        if len(tuple(filter(lambda x: x.safe_to_swap, self._isolation_groups.keys()))) < 2:
+        if len(tuple(g for g in self._isolation_groups if g.safe_to_swap)) >= 2:
             if self._swapper.swap_is_needed():
                 self._swapper.do_swap()
 
