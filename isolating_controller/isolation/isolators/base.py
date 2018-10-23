@@ -11,7 +11,7 @@ from ...workload import Workload
 
 class Isolator(metaclass=ABCMeta):
     _DOD_THRESHOLD: ClassVar[float] = 0.005
-    _FORCE_THRESHOLD: ClassVar[float] = 0.1
+    _FORCE_THRESHOLD: ClassVar[float] = 0.05
 
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         self._prev_metric_diff: MetricDiff = None
