@@ -150,10 +150,10 @@ class MetricDiff:
             if prev.local_mem_ps == 0:
                 self._local_mem_ps = 0
             else:
-                self._local_mem_ps = -prev.local_mem_ps / self._MAX_MEM_BANDWIDTH_PS
+                self._local_mem_ps = prev.local_mem_ps / self._MAX_MEM_BANDWIDTH_PS
         elif prev.local_mem_ps == 0:
             # TODO: is it fair?
-            self._local_mem_ps = curr.local_mem_ps / self._MAX_MEM_BANDWIDTH_PS
+            self._local_mem_ps = -curr.local_mem_ps / self._MAX_MEM_BANDWIDTH_PS
         else:
             self._local_mem_ps = curr.local_mem_ps / prev.local_mem_ps - 1
 
