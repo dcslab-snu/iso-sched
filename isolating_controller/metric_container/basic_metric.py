@@ -143,7 +143,7 @@ class MetricDiff:
     # FIXME: hard coded
     _MAX_MEM_BANDWIDTH_PS = 68 * 1024 * 1024 * 1024
 
-    def __init__(self, curr: BasicMetric, prev: BasicMetric) -> None:
+    def __init__(self, curr: BasicMetric, prev: BasicMetric, core_norm: float = 1) -> None:
         self._l3_hit_ratio = curr.l3hit_ratio - prev.l3hit_ratio
 
         if curr.local_mem_ps == 0:
@@ -155,9 +155,9 @@ class MetricDiff:
             # TODO: is it fair?
             self._local_mem_ps = -curr.local_mem_ps / self._MAX_MEM_BANDWIDTH_PS
         else:
-            self._local_mem_ps = curr.local_mem_ps / prev.local_mem_ps - 1
+            self._local_mem_ps = curr.local_mem_ps / (prev.local_mem_ps * core_norm) - 1
 
-        self._instruction_ps = curr.instruction_ps / prev.instruction_ps - 1
+        self._instruction_ps = curr.instruction_ps / (prev.instruction_ps * core_norm) - 1
 
     @property
     def l3_hit_ratio(self) -> float:

@@ -37,41 +37,39 @@ class SwapIsolator:
         """
         logger = logging.getLogger(__name__)
 
-        def calc_benefit(g1_fg_diff: MetricDiff, g1_bg_diff: MetricDiff,
-                         g2_fg_diff: MetricDiff, g2_bg_diff: MetricDiff,
-                         attribute: str) -> float:
-            g1_fg_cont = getattr(g1_fg_diff, attribute)
-            g1_bg_cont = getattr(g1_bg_diff, attribute)
-            g2_fg_cont = getattr(g2_fg_diff, attribute)
-            g2_bg_cont = getattr(g2_bg_diff, attribute)
-
-            current = abs(g1_fg_cont + g1_bg_cont) + abs(g2_fg_cont + g2_bg_cont)
-            future = abs(g1_fg_cont + g2_bg_cont) + abs(g2_fg_cont + g1_bg_cont)
-            benefit = current - future
-
-            logger.debug(f'Calculating swaption benefit. current: {current}, future: {future}, benefit: {benefit}')
-            return benefit
-
-        contentions: Dict[IsolationPolicy, Tuple[MetricDiff, MetricDiff]] = {
-            group: (
-                group.foreground_workload.calc_metric_diff(),
-                group.background_workload.calc_metric_diff(),
-            )
-            for group in self._all_groups.keys()
-        }
+        contentions: Tuple[Tuple[IsolationPolicy, MetricDiff], ...] = tuple(
+                (group, group.foreground_workload.calc_metric_diff())
+                for group in self._all_groups.keys()
+        )
 
         # TODO: more efficient implementation
-        for group1, g1_diffs in contentions.items():
-            for group2, g2_diffs in contentions.items():
-                if group1 == group2:
-                    continue
+        for idx, (group1, g1_fg_diff) in enumerate(contentions):
+            for group2, g2_fg_diff in contentions[idx + 1:]:
+                g1_bg_curr_cores = len(group1.background_workload.cgroup_cpuset.read_cpus())
+                g2_bg_curr_cores = len(group2.background_workload.cgroup_cpuset.read_cpus())
 
-                group1.background_workload.cgroup_cpuset.read_cpus()
-                instr_benefit = calc_benefit(*g1_diffs, *g2_diffs, attribute='instruction_ps')
-                l3_benefit = calc_benefit(*g1_diffs, *g2_diffs, attribute='l3_hit_ratio')
-                mem_benefit = calc_benefit(*g1_diffs, *g2_diffs, attribute='local_mem_util_ps')
+                g1_fg_cont = g1_fg_diff.instruction_ps
+                g2_fg_cont = g2_fg_diff.instruction_ps
 
-                if instr_benefit + l3_benefit + mem_benefit > 0.1:
+                g1_bg_cont = group1.background_workload.calc_metric_diff().instruction_ps
+                g2_bg_cont = group2.background_workload.calc_metric_diff().instruction_ps
+                current = abs(g1_fg_cont + g1_bg_cont) + abs(g2_fg_cont + g2_bg_cont)
+
+                g1_bg_cont = group1 \
+                    .background_workload \
+                    .calc_metric_diff(g2_bg_curr_cores / g1_bg_curr_cores) \
+                    .instruction_ps
+                g2_bg_cont = group2 \
+                    .background_workload \
+                    .calc_metric_diff(g1_bg_curr_cores / g2_bg_curr_cores) \
+                    .instruction_ps
+                future = abs(g1_fg_cont + g2_bg_cont) + abs(g2_fg_cont + g1_bg_cont)
+
+                benefit = current - future
+                logger.debug(f'Calculating swaption benefit. '
+                             f'current: {current:>7.4f}, future: {future:>7.4}, benefit: {benefit:>7.4}')
+
+                if benefit > 0.1:
                     logger.debug(f'{group1} and {group2} is selected as swap candidate')
                     return group1, group2
 

@@ -140,9 +140,9 @@ class Workload:
     def avg_solorun_data(self, new_data: BasicMetric) -> None:
         self._avg_solorun_data = new_data
 
-    def calc_metric_diff(self) -> MetricDiff:
+    def calc_metric_diff(self, core_norm: float = 1) -> MetricDiff:
         curr_metric: BasicMetric = self._metrics[0]
-        return MetricDiff(curr_metric, self._avg_solorun_data)
+        return MetricDiff(curr_metric, self._avg_solorun_data, core_norm)
 
     def all_child_tid(self) -> Tuple[int, ...]:
         try:
