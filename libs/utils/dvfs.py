@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import ClassVar, Iterable
 
-from isolating_controller.utils.cgroup import CpuSet
+from libs.utils.cgroup import CpuSet
 
 
 class DVFS:

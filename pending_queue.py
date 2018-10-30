@@ -4,8 +4,8 @@ import logging
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, Sized, Tuple, Type
 
-from isolating_controller.isolation.policies import IsolationPolicy
-from isolating_controller.workload import Workload
+from libs.isolation.policies import IsolationPolicy
+from libs.workload import Workload
 
 
 class PendingQueue(Sized):

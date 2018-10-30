@@ -12,11 +12,11 @@ from typing import Dict, Optional
 
 import psutil
 
-import isolating_controller
-from isolating_controller.isolation import NextStep
-from isolating_controller.isolation.isolators import Isolator
-from isolating_controller.isolation.policies import AggressiveWViolationPolicy, IsolationPolicy
-from isolating_controller.isolation.swapper import SwapIsolator
+import libs
+from libs.isolation import NextStep
+from libs.isolation.isolators import Isolator
+from libs.isolation.policies import AggressiveWViolationPolicy, IsolationPolicy
+from libs.isolation.swapper import SwapIsolator
 from pending_queue import PendingQueue
 from polling_thread import PollingThread
 
@@ -170,7 +170,7 @@ def main() -> None:
     controller_logger.addHandler(stream_handler)
     controller_logger.addHandler(file_handler)
 
-    module_logger = logging.getLogger(isolating_controller.__name__)
+    module_logger = logging.getLogger(libs.__name__)
     module_logger.setLevel(logging.DEBUG)
     module_logger.addHandler(stream_handler)
     module_logger.addHandler(file_handler)

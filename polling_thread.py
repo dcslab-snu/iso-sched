@@ -11,8 +11,8 @@ from pika import BasicProperties
 from pika.adapters.blocking_connection import BlockingChannel
 from pika.spec import Basic
 
-from isolating_controller.metric_container.basic_metric import BasicMetric
-from isolating_controller.workload import Workload
+from libs.metric_container.basic_metric import BasicMetric
+from libs.workload import Workload
 from pending_queue import PendingQueue
 
 
