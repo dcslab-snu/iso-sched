@@ -1,52 +1,32 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
-from .base_isolator import Isolator
-from .. import NextStep
-from ...utils import CAT
+from .base import Isolator
+from ...metric_container.basic_metric import MetricDiff
+from ...utils import ResCtrl, numa_topology
 from ...workload import Workload
 
 
 class CacheIsolator(Isolator):
-    _DOD_THRESHOLD = 0.005
-    _FORCE_THRESHOLD = 0.1
-
     def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
         super().__init__(foreground_wl, background_wl)
 
         self._prev_step: Optional[int] = None
         self._cur_step: Optional[int] = None
 
-        self._fg_grp_name = f'{foreground_wl.name}_{foreground_wl.pid}'
-        CAT.create_group(self._fg_grp_name)
-        for tid in foreground_wl.all_child_tid():
-            CAT.add_task(self._fg_grp_name, tid)
+        self._stored_config: Optional[Tuple[int, int]] = None
 
-        self._bg_grp_name = f'{background_wl.name}_{background_wl.pid}'
-        CAT.create_group(self._bg_grp_name)
-        for tid in background_wl.all_child_tid():
-            CAT.add_task(self._bg_grp_name, tid)
-
-    def __del__(self) -> None:
-        logger = logging.getLogger(__name__)
-
-        if self._foreground_wl.is_running:
-            logger.debug(f'reset resctrl configuration of {self._foreground_wl}')
-            # FIXME: hard coded
-            CAT.assign(self._fg_grp_name, '1', CAT.gen_mask(0, CAT.MAX))
-
-        if self._background_wl.is_running:
-            logger.debug(f'reset resctrl configuration of {self._background_wl}')
-            # FIXME: hard coded
-            CAT.assign(self._bg_grp_name, '1', CAT.gen_mask(0, CAT.MAX))
+    @classmethod
+    def _get_metric_type_from(cls, metric_diff: MetricDiff) -> float:
+        return metric_diff.l3_hit_ratio
 
     def strengthen(self) -> 'CacheIsolator':
         self._prev_step = self._cur_step
 
         if self._cur_step is None:
-            self._cur_step = CAT.MAX // 2
+            self._cur_step = ResCtrl.MAX_BITS // 2
         else:
             self._cur_step += 1
 
@@ -66,81 +46,50 @@ class CacheIsolator(Isolator):
     @property
     def is_max_level(self) -> bool:
         # FIXME: hard coded
-        return self._cur_step is not None and self._cur_step + CAT.STEP >= CAT.MAX
+        return self._cur_step is not None and self._cur_step + ResCtrl.STEP >= ResCtrl.MAX_BITS
 
     @property
     def is_min_level(self) -> bool:
         # FIXME: hard coded
-        return self._cur_step is None or self._cur_step - CAT.STEP <= CAT.MIN
+        return self._cur_step is None or self._cur_step - ResCtrl.STEP < ResCtrl.MIN_BITS
 
-    def _enforce(self) -> None:
+    def enforce(self) -> None:
         logger = logging.getLogger(__name__)
 
         if self._cur_step is None:
             logger.info('CAT off')
-
-            # FIXME: hard coded
-            mask = CAT.gen_mask(0, CAT.MAX)
-            CAT.assign(self._fg_grp_name, '1', mask)
-            CAT.assign(self._bg_grp_name, '1', mask)
+            self.reset()
 
         else:
-            logger.info(f'foreground : background = {self._cur_step} : {CAT.MAX - self._cur_step}')
+            logger.info(f'foreground : background = {self._cur_step} : {ResCtrl.MAX_BITS - self._cur_step}')
 
-            # FIXME: hard coded
-            fg_mask = CAT.gen_mask(0, self._cur_step)
-            CAT.assign(self._fg_grp_name, '1', fg_mask)
+            # FIXME: hard coded -> The number of socket is two at most
+            masks = [ResCtrl.MIN_MASK, ResCtrl.MIN_MASK]
+            masks[self._foreground_wl.cur_socket_id()] = ResCtrl.gen_mask(0, self._cur_step)
+            self._foreground_wl.resctrl.assign_llc(*masks)
 
-            # FIXME: hard coded
-            bg_mask = CAT.gen_mask(self._cur_step)
-            CAT.assign(self._bg_grp_name, '1', bg_mask)
+            # FIXME: hard coded -> The number of socket is two at most
+            masks = [ResCtrl.MIN_MASK, ResCtrl.MIN_MASK]
+            masks[self._background_wl.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
+            self._background_wl.resctrl.assign_llc(*masks)
 
-    def _first_decision(self) -> NextStep:
-        metric_diff = self._foreground_wl.calc_metric_diff()
-        curr_diff = metric_diff.l3_hit_ratio
+    def reset(self) -> None:
+        masks = [ResCtrl.MIN_MASK] * (max(numa_topology.cur_online_nodes()) + 1)
 
-        logger = logging.getLogger(__name__)
-        logger.debug(f'current diff: {curr_diff:>7.4f}')
+        if self._background_wl.is_running:
+            bg_masks = masks.copy()
+            bg_masks[self._background_wl.cur_socket_id()] = ResCtrl.MAX_MASK
+            self._background_wl.resctrl.assign_llc(*bg_masks)
 
-        if curr_diff < 0:
-            if self.is_max_level:
-                return NextStep.STOP
-            else:
-                return NextStep.STRENGTHEN
-        elif curr_diff <= CacheIsolator._FORCE_THRESHOLD:
-            return NextStep.STOP
-        else:
-            if self.is_min_level:
-                return NextStep.STOP
-            else:
-                return NextStep.WEAKEN
+        if self._foreground_wl.is_running:
+            masks[self._foreground_wl.cur_socket_id()] = ResCtrl.MAX_MASK
+            self._foreground_wl.resctrl.assign_llc(*masks)
 
-    # TODO: consider turn off cache partitioning
-    def _monitoring_result(self) -> NextStep:
-        metric_diff = self._foreground_wl.calc_metric_diff()
+    def store_cur_config(self) -> None:
+        self._stored_config = (self._prev_step, self._cur_step)
 
-        curr_diff = metric_diff.l3_hit_ratio
-        prev_diff = self._prev_metric_diff.l3_hit_ratio
-        diff_of_diff = curr_diff - prev_diff
+    def load_cur_config(self) -> None:
+        super().load_cur_config()
 
-        logger = logging.getLogger(__name__)
-        logger.debug(f'diff of diff is {diff_of_diff:>7.4f}')
-        logger.debug(f'current diff: {curr_diff:>7.4f}, previous diff: {prev_diff:>7.4f}')
-
-        if self._cur_step is not None \
-                and not (CAT.MIN < self._cur_step < CAT.MAX) \
-                or abs(diff_of_diff) <= CacheIsolator._DOD_THRESHOLD \
-                or abs(curr_diff) <= CacheIsolator._DOD_THRESHOLD:
-            return NextStep.STOP
-
-        elif curr_diff > 0:
-            if self.is_min_level:
-                return NextStep.STOP
-            else:
-                return NextStep.WEAKEN
-
-        else:
-            if self.is_max_level:
-                return NextStep.STOP
-            else:
-                return NextStep.STRENGTHEN
+        self._prev_step, self._cur_step = self._stored_config
+        self._stored_config = None

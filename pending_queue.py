@@ -1,7 +1,8 @@
 # coding: UTF-8
 
 import logging
-from typing import Dict, List, Sized, Tuple, Type
+from collections import defaultdict
+from typing import DefaultDict, Dict, List, Sized, Tuple, Type
 
 from isolating_controller.isolation.policies import IsolationPolicy
 from isolating_controller.workload import Workload
@@ -13,6 +14,7 @@ class PendingQueue(Sized):
 
         self._bg_q: Dict[Tuple[int, ...], Workload] = dict()
         self._fg_q: Dict[Tuple[int, ...], Workload] = dict()
+        self._ready_queue: DefaultDict[int, List[Workload]] = defaultdict(list)
         self._pending_list: List[IsolationPolicy] = list()
 
     def __len__(self) -> int:
@@ -20,35 +22,26 @@ class PendingQueue(Sized):
                 filter(lambda x: len(x.foreground_workload.metrics) > 0 and len(x.background_workload.metrics) > 0,
                        self._pending_list)))
 
-    def add_bg(self, workload: Workload) -> None:
-        logger = logging.getLogger(__name__)
-        logger.info(f'{workload} is ready for active as Background')
+    def add(self, workload: Workload) -> None:
+        logger = logging.getLogger('monitoring.pending_queue')
+        logger.info(f'{workload} is ready for active')
+
+        ready_queue = self._ready_queue[workload.cur_socket_id()]
+        ready_queue.append(workload)
 
         # FIXME: hard coded
-        other_cpuset = tuple(map(lambda x: x - 8, workload.cpuset))
+        if len(ready_queue) is 2 and ready_queue[0].wl_type != ready_queue[1].wl_type:
+            if ready_queue[0].wl_type == 'fg':
+                fg = ready_queue[0]
+                bg = ready_queue[1]
+            else:
+                fg = ready_queue[1]
+                bg = ready_queue[0]
 
-        if other_cpuset in self._fg_q:
-            new_group = self._policy_type(self._fg_q[other_cpuset], workload)
+            new_group = self._policy_type(fg, bg)
             self._pending_list.append(new_group)
-            del self._fg_q[other_cpuset]
 
-        else:
-            self._bg_q[workload.cpuset] = workload
-
-    def add_fg(self, workload: Workload) -> None:
-        logger = logging.getLogger(__name__)
-        logger.info(f'{workload} is ready for active as Foreground')
-
-        # FIXME: hard coded
-        other_cpuset = tuple(map(lambda x: x + 8, workload.cpuset))
-
-        if other_cpuset in self._bg_q:
-            new_group = self._policy_type(self._bg_q[other_cpuset], workload)
-            self._pending_list.append(new_group)
-            del self._bg_q[other_cpuset]
-
-        else:
-            self._fg_q[workload.cpuset] = workload
+            self._ready_queue[workload.cur_socket_id()] = list()
 
     def pop(self) -> IsolationPolicy:
         if len(self) is 0:

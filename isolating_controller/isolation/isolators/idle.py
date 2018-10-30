@@ -1,11 +1,16 @@
 # coding: UTF-8
 
-from .base_isolator import Isolator
+from .base import Isolator
 from .. import NextStep
+from ...metric_container.basic_metric import MetricDiff
 
 
 class IdleIsolator(Isolator):
     def __init__(self) -> None:
+        pass
+
+    @classmethod
+    def _get_metric_type_from(cls, metric_diff: MetricDiff) -> float:
         pass
 
     def strengthen(self) -> 'Isolator':
@@ -22,14 +27,27 @@ class IdleIsolator(Isolator):
     def weaken(self) -> 'Isolator':
         pass
 
-    def _enforce(self) -> None:
+    def enforce(self) -> None:
         pass
 
-    def _first_decision(self) -> NextStep:
+    def _first_decision(self, _) -> NextStep:
+        self._fg_next_step = NextStep.IDLE
+        self._bg_next_step = NextStep.IDLE
         return NextStep.IDLE
 
     def decide_next_step(self) -> NextStep:
         return self._monitoring_result()
 
-    def _monitoring_result(self) -> NextStep:
+    def _monitoring_result(self, **kwargs) -> NextStep:
+        self._fg_next_step = NextStep.IDLE
+        self._bg_next_step = NextStep.IDLE
         return NextStep.IDLE
+
+    def reset(self) -> None:
+        pass
+
+    def store_cur_config(self) -> None:
+        pass
+
+    def load_cur_config(self) -> None:
+        pass
