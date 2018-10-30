@@ -8,7 +8,7 @@ from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolato
 from ...workload import Workload
 
 
-class DefensiveCPUPolicy(IsolationPolicy):
+class ConservativeCPUPolicy(IsolationPolicy):
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         super().__init__(fg_wl, bg_wl)
 
