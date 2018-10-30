@@ -103,23 +103,23 @@ class BasicMetric:
 
     @property
     def intra_coh_ratio(self) -> float:
-        return self._intra_coh / self._l2miss
+        return self._intra_coh / self._l2miss if self._l2miss != 0 else 0
 
     @property
     def inter_coh_ratio(self) -> float:
-        return self._inter_coh / self._l2miss
+        return self._inter_coh / self._l2miss if self._l2miss != 0 else 0
 
     @property
     def coh_ratio(self) -> float:
-        return (self._inter_coh + self._intra_coh) / self._l2miss
+        return (self._inter_coh + self._intra_coh) / self._l2miss if self._l2miss != 0 else 0
 
     @property
     def l3miss_ratio(self) -> float:
-        return self._l3miss / self._l2miss
+        return self._l3miss / self._l2miss if self._l2miss != 0 else 0
 
     @property
     def l3hit_ratio(self) -> float:
-        return 1 - self._l3miss / self._l2miss
+        return 1 - self._l3miss / self._l2miss if self._l2miss != 0 else 0
 
     @property
     def l3_util(self) -> float:
