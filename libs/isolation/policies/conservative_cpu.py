@@ -4,11 +4,12 @@ import logging
 
 from .base import IsolationPolicy
 from .. import ResourceType
-from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
+#from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator, MemoryIsolator
+from ..isolators import CacheIsolator, CoreIsolator, IdleIsolator
 from ...workload import Workload
 
 
-class DefensiveCPUPolicy(IsolationPolicy):
+class ConservativeCPUPolicy(IsolationPolicy):
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
         super().__init__(fg_wl, bg_wl)
 
@@ -44,7 +45,7 @@ class DefensiveCPUPolicy(IsolationPolicy):
             return True
 
         elif not self._is_mem_isolated and resource is ResourceType.MEMORY:
-            self._cur_isolator = self._isolator_map[MemoryIsolator]
+            #self._cur_isolator = self._isolator_map[MemoryIsolator]
             self._is_mem_isolated = True
             logger.info(f'Memory Bandwidth Isolation for {self._fg_wl} is started '
                         f'to isolate {ResourceType.MEMORY.name} BW')

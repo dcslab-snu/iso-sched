@@ -5,7 +5,8 @@ from typing import ClassVar
 
 from .greedy import GreedyPolicy
 from .. import ResourceType
-from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+#from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, SchedIsolator
 from ...workload import Workload
 
 
@@ -25,8 +26,9 @@ class GreedyWViolationPolicy(GreedyPolicy):
 
         return \
             resource is ResourceType.CACHE and not isinstance(self._cur_isolator, CacheIsolator) \
-            or resource is ResourceType.MEMORY and not (isinstance(self._cur_isolator, MemoryIsolator)
-                                                        or isinstance(self._cur_isolator, SchedIsolator))
+            or resource is ResourceType.MEMORY and not (
+                    #isinstance(self._cur_isolator, MemoryIsolator) or
+                                                        isinstance(self._cur_isolator, SchedIsolator))
 
     @property
     def new_isolator_needed(self) -> bool:

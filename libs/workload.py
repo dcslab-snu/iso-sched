@@ -8,7 +8,8 @@ import psutil
 
 from .metric_container.basic_metric import BasicMetric, MetricDiff
 from .solorun_data.datas import data_map
-from .utils import DVFS, ResCtrl, numa_topology
+#from .utils import DVFS, ResCtrl, numa_topology
+from .utils import ResCtrl, numa_topology
 from .utils.cgroup import Cpu, CpuSet
 
 
@@ -32,7 +33,7 @@ class Workload:
         self._cgroup_cpuset = CpuSet(self.group_name)
         self._cgroup_cpu = Cpu(self.group_name)
         self._resctrl = ResCtrl(self.group_name)
-        self._dvfs = DVFS(self.group_name)
+        #self._dvfs = DVFS(self.group_name)
 
         # This variable is used to contain the recent avg. status
         self._avg_solorun_data: Optional[BasicMetric] = None
@@ -61,10 +62,11 @@ class Workload:
     def resctrl(self) -> ResCtrl:
         return self._resctrl
 
+    """
     @property
     def dvfs(self) -> DVFS:
         return self._dvfs
-
+    """
     @property
     def name(self) -> str:
         return self._name

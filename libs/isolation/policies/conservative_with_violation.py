@@ -3,13 +3,14 @@
 import logging
 from typing import ClassVar
 
-from .defensive import DefensivePolicy
+from .conservative import ConservativePolicy
 from .. import ResourceType
-from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+#from ..isolators import CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import CacheIsolator, IdleIsolator, SchedIsolator
 from ...workload import Workload
 
 
-class DefensiveWViolationPolicy(DefensivePolicy):
+class ConservativeWViolationPolicy(ConservativePolicy):
     VIOLATION_THRESHOLD: ClassVar[int] = 3
 
     def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
@@ -22,8 +23,9 @@ class DefensiveWViolationPolicy(DefensivePolicy):
 
         return \
             resource is ResourceType.CACHE and not isinstance(self._cur_isolator, CacheIsolator) \
-            or resource is ResourceType.MEMORY and (not isinstance(self._cur_isolator, MemoryIsolator)
-                                                    and not isinstance(self._cur_isolator, SchedIsolator))
+            or resource is ResourceType.MEMORY and (
+                    #not isinstance(self._cur_isolator, MemoryIsolator) and
+                                                    not isinstance(self._cur_isolator, SchedIsolator))
 
     @property
     def new_isolator_needed(self) -> bool:
@@ -36,7 +38,7 @@ class DefensiveWViolationPolicy(DefensivePolicy):
 
             self._violation_count += 1
 
-            if self._violation_count >= DefensiveWViolationPolicy.VIOLATION_THRESHOLD:
+            if self._violation_count >= ConservativeWViolationPolicy.VIOLATION_THRESHOLD:
                 logger.info('new isolator is required due to violation')
                 self.set_idle_isolator()
                 self._clear_flags()

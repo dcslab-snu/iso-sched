@@ -4,7 +4,8 @@ import logging
 
 from .base import IsolationPolicy
 from .. import ResourceType
-from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+#from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, SchedIsolator
 from ...workload import Workload
 
 
@@ -37,7 +38,7 @@ class AggressivePolicy(IsolationPolicy):
                     isolator = self._isolator_map[SchedIsolator]
                     self._is_mem_isolated = False
                 else:
-                    isolator = self._isolator_map[MemoryIsolator]
+                    #isolator = self._isolator_map[MemoryIsolator]
                     self._is_mem_isolated = True
             else:
                 raise NotImplementedError(f'Unknown ResourceType: {resource}')

@@ -4,7 +4,8 @@ import logging
 
 from .base import IsolationPolicy
 from .. import ResourceType
-from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+#from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, SchedIsolator
 from ...workload import Workload
 
 
@@ -37,7 +38,7 @@ class GreedyPolicy(IsolationPolicy):
             return True
 
         elif not self._is_mem_isolated and resource is ResourceType.MEMORY:
-            self._cur_isolator = self._isolator_map[MemoryIsolator]
+            #self._cur_isolator = self._isolator_map[MemoryIsolator]
             self._is_mem_isolated = True
             logger.info(f'Starting {self._cur_isolator.__class__.__name__}...')
             return True
