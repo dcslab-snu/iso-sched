@@ -15,8 +15,12 @@ class MemoryIsolator(Isolator):
 
         # FIXME: hard coded
         # bw_weight is initialized to 100 at first (This functions same as cur_step)
-        self._cur_bw_weight: Dict[str, int] = [100]*2
+        self._cur_wl_pids: List[str] = [self._foreground_wl.pid, self._background_wl.pid]
         self._cur_grp_names: List[str] = [self._foreground_wl.group_name, self._background_wl.group_name]
+        self._cur_bw_weight: Dict[str, int] = dict()
+        for grp_name in self._cur_grp_names:
+            self._cur_bw_weight[grp_name] = 100
+
         self._cur_total_bw_weight = sum(self._cur_bw_weight.values())
         self._cur_weight_step = int(self._cur_total_bw_weight * 0.1)
         self._stored_config: Optional[int] = None
@@ -50,13 +54,13 @@ class MemoryIsolator(Isolator):
 
     def enforce(self) -> None:
         logger = logging.getLogger(__name__)
-        logger.info(f'BW weight of {self._foreground_wl.group_name} is \
-        {self._cur_bw_weight[self._foreground_wl.group_name]}')
-        logger.info(f'BW weight of {self._background_wl.group_name} is \
-        {self._cur_bw_weight[self._background_wl.group_name]}')
+        fg_grp_name = self._foreground_wl.group_name
+        bg_grp_name = self._background_wl.group_name
+        logger.info(f'BW weight of {fg_grp_name} : {self._cur_bw_weight[self._foreground_wl.group_name]}')
+        logger.info(f'BW weight of {bg_grp_name} : {self._cur_bw_weight[self._background_wl.group_name]}')
 
         self._memguard.update_bw_list_for_all_workloads()
-        updated_bw_list = self._memguard.bw_list()
+        updated_bw_list = self._memguard.bw_list
         logger.info(f'Memguard\'s updated_bw_list : {updated_bw_list}')
         # FIXME: Currently no enforcing
         # self._memguard.assign_bandwidth()

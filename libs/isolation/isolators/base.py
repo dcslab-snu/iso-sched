@@ -79,6 +79,7 @@ class Isolator(metaclass=ABCMeta):
         logger = logging.getLogger(__name__)
         logger.debug(f'current diff: {curr_diff:>7.4f}')
 
+        # FIXME: For MemguardOnlyPolicy, criteria of curr_diff changed from 0 to -0.1
         if curr_diff < 0:
             if self.is_max_level:
                 return NextStep.STOP
@@ -105,6 +106,8 @@ class Isolator(metaclass=ABCMeta):
                 or abs(curr_diff) <= self._DOD_THRESHOLD:
             return NextStep.STOP
 
+        # FIXME: For MemguardOnlyPolicy, criteria of curr_diff changed from 0 to -0.1
+        # elif curr_diff > 0:
         elif curr_diff > 0:
             if self.is_min_level:
                 return NextStep.STOP

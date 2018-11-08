@@ -15,7 +15,7 @@ import psutil
 import libs
 from libs.isolation import NextStep
 from libs.isolation.isolators import Isolator
-from libs.isolation.policies import AggressiveWViolationPolicy, IsolationPolicy
+from libs.isolation.policies import MemguardOnlyPolicy, IsolationPolicy
 from libs.isolation.swapper import SwapIsolator
 from pending_queue import PendingQueue
 from polling_thread import PollingThread
@@ -25,7 +25,7 @@ MIN_PYTHON = (3, 6)
 
 class Controller:
     def __init__(self, metric_buf_size: int) -> None:
-        self._pending_queue: PendingQueue = PendingQueue(AggressiveWViolationPolicy)
+        self._pending_queue: PendingQueue = PendingQueue(MemguardOnlyPolicy)
 
         self._interval: float = 0.2  # scheduling interval (sec)
         self._profile_interval: float = 1.0  # check interval for phase change (sec)

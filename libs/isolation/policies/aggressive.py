@@ -4,8 +4,9 @@ import logging
 
 from .base import IsolationPolicy
 from .. import ResourceType
-#from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
-from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, SchedIsolator
+from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, MemoryIsolator, SchedIsolator
+# from ..isolators import AffinityIsolator, CacheIsolator, IdleIsolator, SchedIsolator
+# from ..isolators import IdleIsolator, MemoryIsolator
 from ...workload import Workload
 
 
@@ -24,6 +25,7 @@ class AggressivePolicy(IsolationPolicy):
         logger.debug('looking for new isolation...')
 
         # if foreground is web server (CPU critical)
+
         if len(self._fg_wl.bound_cores) * 2 < self._fg_wl.number_of_threads:
             if AffinityIsolator in self._isolator_map and not self._isolator_map[AffinityIsolator].is_max_level:
                 self._cur_isolator = self._isolator_map[AffinityIsolator]
@@ -31,6 +33,7 @@ class AggressivePolicy(IsolationPolicy):
                 return True
 
         for resource, diff_value in self.contentious_resources():
+
             if resource is ResourceType.CACHE:
                 isolator = self._isolator_map[CacheIsolator]
             elif resource is ResourceType.MEMORY:
@@ -38,8 +41,9 @@ class AggressivePolicy(IsolationPolicy):
                     isolator = self._isolator_map[SchedIsolator]
                     self._is_mem_isolated = False
                 else:
-                    #isolator = self._isolator_map[MemoryIsolator]
+                    isolator = self._isolator_map[MemoryIsolator]
                     self._is_mem_isolated = True
+
             else:
                 raise NotImplementedError(f'Unknown ResourceType: {resource}')
 
