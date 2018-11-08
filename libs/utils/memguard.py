@@ -11,13 +11,14 @@ from . import numa_topology
 
 class Memguard:
     MOUNT_POINT: ClassVar[Path] = Path('/sys/kerenl/debug/memguard')
-    ONLINE_CORES = numa_topology.core_belongs_to()
-    TOTAL_BW = 68000 # 68000 MB/s == 68 GB/s
+    TOTAL_BW = 68000    # 68000 MB/s == 68 GB/s
+    MIN_WEIGHT = 20
+    MAX_WEIGHT = 180
 
     def __init__(self, group_names: List[str], bw_weights: Dict[str, int]):
         self._group_names: List[str] = group_names
         self._all_cgroup = [CpuSet(group_name) for group_name in self._group_names]
-        self._maxbw = 1200
+        self._maxbw = 1200  # TODO: It is not used currently
 
         # Get the info of nodes
         self._online_nodes = numa_topology.cur_online_nodes()
@@ -35,6 +36,10 @@ class Memguard:
     def maxbw(self):
         return self._maxbw
 
+    @property
+    def bw_list(self):
+        return self._bw_list
+
     def update_bw_weight(self, grp_name: str, bw_weight: int) -> None:
         self._bw_weight_dict[grp_name] = bw_weight
 
@@ -49,7 +54,9 @@ class Memguard:
     def calc_bandwidth_of_cores(self, grp_name: str, bw_weight: int, total_bw_weight: int) -> int:
         """
         Return the each core's bandwidth to enforce the share of workload
+        :param grp_name: group name which cores belong to
         :param bw_weight: It contains the share of each workload (key:val = pid:bw_share), bw_share : [0,100]
+        :param total_bw_weight: The value of total bw weight
         :return:
         """
         bw_share = float(bw_weight/total_bw_weight)
@@ -73,7 +80,7 @@ class Memguard:
         total_bw_weight = self.calc_total_bw_weight()
         for grp_name, bw_weight in self._bw_weight_dict.items():
             membw = self.calc_bandwidth_of_cores(grp_name, bw_weight, total_bw_weight)
-            ## Making BW_List for a group
+            # Making BW_List for a group
             wl_cpus: Set[int] = CpuSet(grp_name).read_cpus()
             for cpu_id in wl_cpus:
                 self._bw_list[cpu_id] = str(membw)
