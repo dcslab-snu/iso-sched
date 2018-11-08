@@ -6,8 +6,9 @@ from typing import ClassVar, Dict, Tuple, Type
 
 from .. import ResourceType
 #from ..isolators import CacheIsolator, IdleIsolator, Isolator, MemoryIsolator, SchedIsolator
-from ..isolators import CacheIsolator, IdleIsolator, Isolator, SchedIsolator
-from ..isolators.affinity import AffinityIsolator
+#from ..isolators import CacheIsolator, IdleIsolator, Isolator, SchedIsolator
+#from ..isolators.affinity import AffinityIsolator
+from ..isolators import Isolator, IdleIsolator, MemoryIsolator
 from ...metric_container.basic_metric import BasicMetric, MetricDiff
 from ...workload import Workload
 
@@ -20,11 +21,12 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._fg_wl = fg_wl
         self._bg_wl = bg_wl
 
+        # FIXME: Currently testing Memguard(MemoryIsolator) only
         self._isolator_map: Dict[Type[Isolator], Isolator] = dict((
-            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
-            (AffinityIsolator, AffinityIsolator(self._fg_wl, self._bg_wl)),
-            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl)),
-            #(MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
+            #(CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
+            #(AffinityIsolator, AffinityIsolator(self._fg_wl, self._bg_wl)),
+            #(SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl)),
+            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
         ))
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
