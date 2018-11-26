@@ -32,7 +32,7 @@ class MemguardOnlyPolicy(IsolationPolicy):
 
         resource, mem_diff = self.contentious_resource()
 
-        if mem_diff < -0.1 and resource is ResourceType.MEMORY:
+        if mem_diff < 0 and resource is ResourceType.MEMORY:
             self._cur_isolator = self._isolator_map[MemoryIsolator]
             self._is_mem_isolated = True
             logger.info(f'Starting {self._cur_isolator.__class__.__name__}...')

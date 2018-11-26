@@ -63,13 +63,16 @@ class MemoryIsolator(Isolator):
         updated_bw_list = self._memguard.bw_list
         logger.info(f'Memguard\'s updated_bw_list : {updated_bw_list}')
         # FIXME: Currently no enforcing
-        # self._memguard.assign_bandwidth()
+        self._memguard.assign_bandwidth(None)
 
     def reset(self) -> None:
         logger = logging.getLogger(__name__)
         logger.info(f'reset called in MemoryIsolator!')
         # FIXME: Currently no enforcing
-        # self._memguard.assign_bandwidth()
+        #for grp_name in self._cur_grp_names:
+        #    self._memguard.update_bw_weight(grp_name, 100)
+        #self._memguard.update_bw_list_for_all_workloads()
+        self._memguard.assign_bandwidth(['4250']*16)    # To guarantee the unfinished workload runs alone
 
     def store_cur_config(self) -> None:
         self._stored_config = self._cur_bw_weight

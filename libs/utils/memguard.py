@@ -1,17 +1,19 @@
 # coding: UTF-8
 
-
+import logging
 import subprocess
 
 from pathlib import Path
-from typing import ClassVar, Set, Dict, List
+from typing import ClassVar, Set, Dict, List, Optional
 from libs.utils.cgroup import CpuSet
 from . import numa_topology
 
 
 class Memguard:
-    MOUNT_POINT: ClassVar[Path] = Path('/sys/kerenl/debug/memguard')
+    MOUNT_POINT: ClassVar[Path] = Path('/sys/kernel/debug/memguard')
     TOTAL_BW = 68000    # 68000 MB/s == 68 GB/s
+
+    # FIXME: hard coded for two workloads
     MIN_WEIGHT = 20
     MAX_WEIGHT = 180
 
@@ -43,12 +45,20 @@ class Memguard:
     def update_bw_weight(self, grp_name: str, bw_weight: int) -> None:
         self._bw_weight_dict[grp_name] = bw_weight
 
-    def assign_bandwidth(self) -> None:
+    def assign_bandwidth(self, bw_list: Optional[List[str]]) -> None:
+        logger = logging.getLogger(__name__)
+
+        if bw_list is not None:
+            self._bw_list = bw_list
+
         mb_bandwidth = 'mb '
         bw_str = " ".join(self._bw_list)
 
         input_bandwidths = mb_bandwidth + bw_str
-        subprocess.run(args=('sudo', 'echo', str(self.MOUNT_POINT/'limit')),
+        logger.info(f'Enforcing input_bandwidth : {input_bandwidths}')
+        # FIXME: Give the controller privileged permission
+        # TODO: Check if the below code is working
+        subprocess.run(args=('sudo', 'tee', str(self.MOUNT_POINT/'limit')),
                        input=input_bandwidths, check=True, encoding='ASCII', stdout=subprocess.DEVNULL)
 
     def calc_bandwidth_of_cores(self, grp_name: str, bw_weight: int, total_bw_weight: int) -> int:
