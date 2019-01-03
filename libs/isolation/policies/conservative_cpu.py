@@ -9,8 +9,10 @@ from ...workload import Workload
 
 
 class ConservativeCPUPolicy(IsolationPolicy):
-    def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
-        super().__init__(fg_wl, bg_wl)
+    """.. deprecated"""
+
+    def __init__(self, fg_wl: Workload, bg_wls: Workload) -> None:
+        super().__init__(fg_wl, bg_wls)
 
         self._is_llc_isolated = False
         self._is_mem_isolated = False

@@ -10,8 +10,8 @@ from ...workload import Workload
 
 
 class CacheIsolator(Isolator):
-    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        super().__init__(foreground_wl, background_wl)
+    def __init__(self, foreground_wl: Workload, background_wls: Tuple[Workload, ...]) -> None:
+        super().__init__(foreground_wl, background_wls)
 
         self._prev_step: Optional[int] = None
         self._cur_step: Optional[int] = None
@@ -70,16 +70,17 @@ class CacheIsolator(Isolator):
 
             # FIXME: hard coded -> The number of socket is two at most
             masks = [ResCtrl.MIN_MASK, ResCtrl.MIN_MASK]
-            masks[self._background_wl.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
-            self._background_wl.resctrl.assign_llc(*masks)
+            masks[self._any_running_bg.cur_socket_id()] = ResCtrl.gen_mask(self._cur_step)
+            for bg in self._all_running_bgs:
+                bg.resctrl.assign_llc(*masks)
 
     def reset(self) -> None:
         masks = [ResCtrl.MIN_MASK] * (max(numa_topology.cur_online_nodes()) + 1)
 
-        if self._background_wl.is_running:
+        for bg in self._all_running_bgs:
             bg_masks = masks.copy()
-            bg_masks[self._background_wl.cur_socket_id()] = ResCtrl.MAX_MASK
-            self._background_wl.resctrl.assign_llc(*bg_masks)
+            bg_masks[bg.cur_socket_id()] = ResCtrl.MAX_MASK
+            bg.resctrl.assign_llc(*bg_masks)
 
         if self._foreground_wl.is_running:
             masks[self._foreground_wl.cur_socket_id()] = ResCtrl.MAX_MASK

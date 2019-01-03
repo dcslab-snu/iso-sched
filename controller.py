@@ -124,16 +124,16 @@ class Controller:
 
         for group in ended:
             if group.foreground_workload.is_running:
-                ended_workload = group.background_workload
+                logger.info(f'{group} of backgrounds are ended')
             else:
-                ended_workload = group.foreground_workload
-            logger.info(f'{group} of {ended_workload.name} is ended')
+                logger.info(f'{group} of {group.foreground_workload.name} is ended')
 
             # remove from containers
             group.reset()
             del self._isolation_groups[group]
             if group.in_solorun_profiling:
-                group.background_workload.resume()
+                for bg in filter(lambda w: w.is_running, group.background_workloads):
+                    bg.resume()
                 del self._solorun_count[group]
 
     def run(self) -> None:

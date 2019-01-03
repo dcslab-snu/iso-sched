@@ -1,7 +1,7 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 from .base import Isolator
 from ...metric_container.basic_metric import MetricDiff
@@ -9,11 +9,11 @@ from ...workload import Workload
 
 
 class SchedIsolator(Isolator):
-    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        super().__init__(foreground_wl, background_wl)
+    def __init__(self, foreground_wl: Workload, background_wls: Tuple[Workload, ...]) -> None:
+        super().__init__(foreground_wl, background_wls)
 
         # FIXME: hard coded
-        self._cur_step = background_wl.orig_bound_cores[0]
+        self._cur_step = background_wls[0].orig_bound_cores[0]
 
         self._stored_config: Optional[int] = None
 
@@ -31,7 +31,7 @@ class SchedIsolator(Isolator):
 
     @property
     def is_max_level(self) -> bool:
-        return self._cur_step == self._background_wl.orig_bound_cores[-1]
+        return self._cur_step == self._any_running_bg.orig_bound_cores[-1]
 
     @property
     def is_min_level(self) -> bool:
@@ -41,14 +41,15 @@ class SchedIsolator(Isolator):
     def enforce(self) -> None:
         logger = logging.getLogger(__name__)
         # FIXME: hard coded
-        logger.info(f'affinity of background is {self._cur_step}-{self._background_wl.orig_bound_cores[-1]}')
+        logger.info(f'affinity of background is {self._cur_step}-{self._any_running_bg.orig_bound_cores[-1]}')
 
         # FIXME: hard coded
-        self._background_wl.bound_cores = range(self._cur_step, self._background_wl.orig_bound_cores[-1] + 1)
+        for bg in self._all_running_bgs:
+            bg.bound_cores = range(self._cur_step, bg.orig_bound_cores[-1] + 1)
 
     def reset(self) -> None:
-        if self._background_wl.is_running:
-            self._background_wl.bound_cores = self._background_wl.orig_bound_cores
+        for bg in self._all_running_bgs:
+            bg.bound_cores = bg.orig_bound_cores
 
     def store_cur_config(self) -> None:
         self._stored_config = self._cur_step

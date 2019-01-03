@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar, Iterable, Optional, Tuple
 
 from .. import NextStep
 from ...metric_container.basic_metric import MetricDiff
@@ -13,11 +13,11 @@ class Isolator(metaclass=ABCMeta):
     _DOD_THRESHOLD: ClassVar[float] = 0.005
     _FORCE_THRESHOLD: ClassVar[float] = 0.05
 
-    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
+    def __init__(self, foreground_wl: Workload, background_wls: Tuple[Workload, ...]) -> None:
         self._prev_metric_diff: MetricDiff = None
 
         self._foreground_wl = foreground_wl
-        self._background_wl = background_wl
+        self._background_wls = background_wls
 
         self._fg_next_step = NextStep.IDLE
         self._bg_next_step = NextStep.IDLE
@@ -145,8 +145,8 @@ class Isolator(metaclass=ABCMeta):
         self._foreground_wl = new_workload
         self._prev_metric_diff = new_workload.calc_metric_diff()
 
-    def change_bg_wl(self, new_workload: Workload) -> None:
-        self._background_wl = new_workload
+    def change_bg_wl(self, new_workloads: Tuple[Workload, ...]) -> None:
+        self._background_wls = new_workloads
 
     @abstractmethod
     def store_cur_config(self) -> None:
@@ -157,3 +157,16 @@ class Isolator(metaclass=ABCMeta):
         """Load the current configuration"""
         if self._stored_config is None:
             raise ValueError('Store configuration first!')
+
+    @property
+    def _all_running_bgs(self) -> Iterable[Workload]:
+        for bg in self._background_wls:
+            if bg.is_running:
+                yield bg
+
+    @property
+    def _any_running_bg(self) -> Workload:
+        for bg in self._all_running_bgs:
+            return bg
+
+        raise ValueError('All BG is ended')

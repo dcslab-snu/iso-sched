@@ -1,7 +1,7 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 from .base import Isolator
 from ...metric_container.basic_metric import MetricDiff
@@ -9,8 +9,8 @@ from ...workload import Workload
 
 
 class AffinityIsolator(Isolator):
-    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        super().__init__(foreground_wl, background_wl)
+    def __init__(self, foreground_wl: Workload, background_wls: Tuple[Workload, ...]) -> None:
+        super().__init__(foreground_wl, background_wls)
 
         self._cur_step: int = self._foreground_wl.orig_bound_cores[-1]
 
@@ -27,7 +27,7 @@ class AffinityIsolator(Isolator):
     @property
     def is_max_level(self) -> bool:
         # FIXME: hard coded
-        return self._cur_step + 1 == self._background_wl.bound_cores[0]
+        return self._cur_step + 1 == self._any_running_bg.bound_cores[0]
 
     @property
     def is_min_level(self) -> bool:
