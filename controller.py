@@ -24,7 +24,7 @@ MIN_PYTHON = (3, 6)
 
 
 class Controller:
-    def __init__(self, metric_buf_size: int) -> None:
+    def __init__(self, metric_buf_size: int, swap_off: bool) -> None:
         self._pending_queue: PendingQueue = PendingQueue(AggressiveWViolationPolicy)
 
         self._interval: float = 0.2  # scheduling interval (sec)
@@ -35,6 +35,7 @@ class Controller:
         self._isolation_groups: Dict[IsolationPolicy, int] = dict()
 
         self._polling_thread = PollingThread(metric_buf_size, self._pending_queue)
+        self._swap_off: bool = swap_off
 
         # Swapper init
         self._swapper: SwapIsolator = SwapIsolator(self._isolation_groups)
@@ -97,7 +98,7 @@ class Controller:
             finally:
                 self._isolation_groups[group] += 1
 
-        if len(tuple(g for g in self._isolation_groups if g.safe_to_swap)) >= 2:
+        if not self._swap_off and len(tuple(g for g in self._isolation_groups if g.safe_to_swap)) >= 2:
             if self._swapper.swap_is_needed():
                 self._swapper.do_swap()
 
@@ -155,6 +156,8 @@ def main() -> None:
     parser.add_argument('-b', '--metric-buf-size', dest='buf_size', default='50', type=int,
                         help='metric buffer size per thread. (default : 50)')
 
+    parser.add_argument('--swap-off', action='store_true', help='turn off swapper')
+
     os.makedirs('logs', exist_ok=True)
 
     args = parser.parse_args()
@@ -180,7 +183,7 @@ def main() -> None:
     monitoring_logger.addHandler(stream_handler)
     monitoring_logger.addHandler(file_handler)
 
-    controller = Controller(args.buf_size)
+    controller = Controller(args.buf_size, args.swap_off)
     controller.run()
 
 
