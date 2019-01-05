@@ -41,8 +41,7 @@ class MemoryIsolator(Isolator):
 
     def enforce(self) -> None:
         logger = logging.getLogger(__name__)
-        logger.info(
-                f'frequency of bound_cores {self._any_running_bg.bound_cores} is {self._cur_step / 1_000_000}GHz')
+        logger.info(f'frequency of bound_cores {self._any_running_bg.bound_cores} is {self._cur_step / 1_000_000}GHz')
 
         # FIXME: hard coded
         DVFS.set_freq(self._cur_step, self._any_running_bg.bound_cores)

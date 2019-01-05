@@ -169,4 +169,4 @@ class Isolator(metaclass=ABCMeta):
         for bg in self._all_running_bgs:
             return bg
 
-        raise ValueError('All BG is ended')
+        raise ProcessLookupError('All BG is ended')
