@@ -31,7 +31,7 @@ class SchedIsolator(Isolator):
 
     @property
     def is_max_level(self) -> bool:
-        return self._cur_step == self._background_wls[0].orig_bound_cores[-1]
+        return self._cur_step == self._any_running_bg.orig_bound_cores[-1]
 
     @property
     def is_min_level(self) -> bool:
@@ -41,7 +41,7 @@ class SchedIsolator(Isolator):
     def enforce(self) -> None:
         logger = logging.getLogger(__name__)
         # FIXME: hard coded
-        logger.info(f'affinity of background is {self._cur_step}-{self._background_wls[0].orig_bound_cores[-1]}')
+        logger.info(f'affinity of background is {self._cur_step}-{self._any_running_bg.orig_bound_cores[-1]}')
 
         # FIXME: hard coded
         for bg in self._all_running_bgs:

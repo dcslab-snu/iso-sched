@@ -49,8 +49,7 @@ class MemoryIsolator(Isolator):
 
     def reset(self) -> None:
         # FIXME: hard coded
-        for bg in self._all_running_bgs:
-            DVFS.set_freq(DVFS.MAX, bg.orig_bound_cores)
+        DVFS.set_freq(DVFS.MAX, self._any_running_bg.orig_bound_cores)
 
     def store_cur_config(self) -> None:
         self._stored_config = self._cur_step
