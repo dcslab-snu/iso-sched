@@ -14,10 +14,10 @@ class PendingQueue(Sized):
         self._policy_type: Type[IsolationPolicy] = policy_type
 
         self._ready_queue: DefaultDict[int, List[Workload]] = defaultdict(list)
-        self._pending_list: List[Tuple[Workload, Tuple[Workload, ...]]] = list()
+        self._pending_list: List[Tuple[Workload, List[Workload]]] = list()
 
     @staticmethod
-    def _group_ready(group: Tuple[Workload, Tuple[Workload, ...]]):
+    def _group_ready(group: Tuple[Workload, List[Workload]]) -> bool:
         return all(len(wl.metrics) > 0 for wl in chain(group[1], (group[0],)))
 
     def __len__(self) -> int:
@@ -27,16 +27,16 @@ class PendingQueue(Sized):
         logger = logging.getLogger('monitoring.pending_queue')
         logger.info(f'{workload} is ready for active')
 
-        for group in self._pending_list:
-            if group[0].cur_socket_id() == workload.cur_socket_id():
-                logger.info(f'Merging {workload} into the group of {group[0]} as background workload')
-                group.background_workloads = group.background_workloads + (workload,)
+        for fg, bgs in self._pending_list:
+            if fg.cur_socket_id() == workload.cur_socket_id():
+                logger.info(f'Merging {workload} into the group of {fg} as background workload')
+                bgs.append(workload)
                 return
 
         ready_queue = self._ready_queue[workload.cur_socket_id()]
         ready_queue.append(workload)
 
-        group_wl: Dict[str, Tuple[Workload, ...]] = {k: tuple(v) for k, v in groupby(ready_queue, lambda w: w.wl_type)}
+        group_wl: Dict[str, List[Workload]] = {k: list(v) for k, v in groupby(ready_queue, lambda w: w.wl_type)}
 
         if not ('fg' in group_wl and 'bg' in group_wl):
             return
@@ -50,4 +50,6 @@ class PendingQueue(Sized):
     def pop(self) -> IsolationPolicy:
         if len(self) is 0:
             raise IndexError(f'{self} is empty')
-        return self._policy_type(*self._pending_list.pop())
+
+        fg, bgs = self._pending_list.pop()
+        return self._policy_type(fg, tuple(bgs))
