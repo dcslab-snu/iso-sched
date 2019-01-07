@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a report to help us improve
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
@@ -20,19 +20,18 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
+**Screenshots or Log**
 If applicable, add screenshots to help explain your problem.
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+    If applicable, add logs to help explain your problem.
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+**Machine (please complete the following information):**
+ - CPU: [e.g. 2-way Intel(R) Xeon(R) CPU E5-2683 v4 @ 2.10GHz]
+ - OS: [e.g. Ubuntu 16.04]
+ - Kernel: [e.g. Linux 4.19.0]
+ - Python interpreter: [e.g. Python 3.7]
+ - RabbitMQ: [e.g. 3.7.9]
+ - Commit: [e.g. 5c97499]
 
 **Additional context**
 Add any other context about the problem here.
