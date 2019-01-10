@@ -15,15 +15,15 @@ class IsolationPolicy(metaclass=ABCMeta):
     _IDLE_ISOLATOR: ClassVar[IdleIsolator] = IdleIsolator()
     _VERIFY_THRESHOLD: ClassVar[int] = 3
 
-    def __init__(self, fg_wl: Workload, bg_wl: Workload) -> None:
+    def __init__(self, fg_wl: Workload, bg_wls: Tuple[Workload, ...]) -> None:
         self._fg_wl = fg_wl
-        self._bg_wl = bg_wl
+        self._bg_wls = bg_wls
 
         self._isolator_map: Dict[Type[Isolator], Isolator] = dict((
-            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wl)),
-            (AffinityIsolator, AffinityIsolator(self._fg_wl, self._bg_wl)),
-            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wl)),
-            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wl)),
+            (CacheIsolator, CacheIsolator(self._fg_wl, self._bg_wls)),
+            (AffinityIsolator, AffinityIsolator(self._fg_wl, self._bg_wls)),
+            (SchedIsolator, SchedIsolator(self._fg_wl, self._bg_wls)),
+            (MemoryIsolator, MemoryIsolator(self._fg_wl, self._bg_wls)),
         ))
         self._cur_isolator: Isolator = IsolationPolicy._IDLE_ISOLATOR
 
@@ -35,7 +35,7 @@ class IsolationPolicy(metaclass=ABCMeta):
         return id(self)
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__} <fg: {self._fg_wl}, bg: {self._bg_wl}>'
+        return f'{self.__class__.__name__} <fg: {self._fg_wl}, bg: {self._bg_wls}>'
 
     def __del__(self) -> None:
         isolators = tuple(self._isolator_map.keys())
@@ -59,7 +59,8 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         logger = logging.getLogger(__name__)
         logger.info(f'foreground : {metric_diff}')
-        logger.info(f'background : {self._bg_wl.calc_metric_diff()}')
+        for bg in filter(lambda w: w.is_running, self._bg_wls):
+            logger.info(f'background({bg.name}) : {bg.calc_metric_diff()}')
 
         resources = ((ResourceType.CACHE, metric_diff.l3_hit_ratio),
                      (ResourceType.MEMORY, metric_diff.local_mem_util_ps))
@@ -82,19 +83,19 @@ class IsolationPolicy(metaclass=ABCMeta):
             isolator.enforce()
 
     @property
-    def background_workload(self) -> Workload:
-        return self._bg_wl
+    def background_workloads(self) -> Tuple[Workload, ...]:
+        return self._bg_wls
 
-    @background_workload.setter
-    def background_workload(self, new_workload: Workload):
-        self._bg_wl = new_workload
+    @background_workloads.setter
+    def background_workloads(self, new_workload: Tuple[Workload, ...]):
+        self._bg_wls = new_workload
         for isolator in self._isolator_map.values():
             isolator.change_bg_wl(new_workload)
             isolator.enforce()
 
     @property
     def ended(self) -> bool:
-        return not self._fg_wl.is_running or not self._bg_wl.is_running
+        return not self._fg_wl.is_running or not any(bg.is_running for bg in self._bg_wls)
 
     @property
     def cur_isolator(self) -> Isolator:
@@ -128,7 +129,8 @@ class IsolationPolicy(metaclass=ABCMeta):
         self._solorun_verify_violation_count = 0
 
         # suspend all workloads and their perf agents
-        self._bg_wl.pause()
+        for bg in filter(lambda w: w.is_running, self._bg_wls):
+            bg.pause()
 
         self._fg_wl.metrics.clear()
 
@@ -154,7 +156,8 @@ class IsolationPolicy(metaclass=ABCMeta):
 
         self._fg_wl.metrics.clear()
 
-        self._bg_wl.resume()
+        for bg in filter(lambda w: w.is_running, self._bg_wls):
+            bg.resume()
 
         self._in_solorun_profile = False
 

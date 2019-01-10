@@ -10,14 +10,15 @@ from ...workload import Workload
 
 
 class CoreIsolator(Isolator):
+    """.. deprecated"""
     _INST_PS_THRESHOLD: ClassVar[float] = -0.5
 
-    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        super().__init__(foreground_wl, background_wl)
+    def __init__(self, foreground_wl: Workload, background_wls: Tuple[Workload, ...]) -> None:
+        super().__init__(foreground_wl, background_wls)
 
         # FIXME: hard coded (contiguous allocation)
         self._cur_fg_step: int = foreground_wl.orig_bound_cores[-1]
-        self._cur_bg_step: int = background_wl.orig_bound_cores[0]
+        self._cur_bg_step: int = background_wls[0].orig_bound_cores[0]
 
         self._bg_next_step: NextStep = NextStep.IDLE
         self._fg_next_step: NextStep = NextStep.IDLE
@@ -59,22 +60,23 @@ class CoreIsolator(Isolator):
     @property
     def is_max_level(self) -> bool:
         # FIXME: hard coded (contiguous allocation)
-        return self._cur_bg_step == self._background_wl.orig_bound_cores[-1] and \
+        return self._cur_bg_step == self._any_running_bg.orig_bound_cores[-1] and \
                self._cur_fg_step == self._cur_bg_step - 1
 
     @property
     def is_min_level(self) -> bool:
-        return self._cur_bg_step == self._background_wl.orig_bound_cores[0] and \
+        return self._cur_bg_step == self._any_running_bg.orig_bound_cores[0] and \
                self._cur_fg_step == self._foreground_wl.orig_bound_cores[-1]
 
     def enforce(self) -> None:
         logger = logging.getLogger(__name__)
         logger.debug(f'fg affinity : {self._foreground_wl.orig_bound_cores[0]}-{self._cur_fg_step}')
-        logger.debug(f'bg affinity : {self._cur_bg_step}-{self._background_wl.orig_bound_cores[-1]}')
+        logger.debug(f'bg affinity : {self._cur_bg_step}-{self._any_running_bg.orig_bound_cores[-1]}')
 
         # FIXME: hard coded (contiguous allocation)
         self._foreground_wl.bound_cores = range(self._foreground_wl.orig_bound_cores[0], self._cur_fg_step + 1)
-        self._background_wl.bound_cores = range(self._cur_bg_step, self._background_wl.orig_bound_cores[-1] + 1)
+        for bg in self._all_running_bgs:
+            bg.bound_cores = range(self._cur_bg_step, bg.orig_bound_cores[-1] + 1)
 
     def _first_decision(self, metric_diff: MetricDiff) -> NextStep:
         curr_diff = None
@@ -152,7 +154,7 @@ class CoreIsolator(Isolator):
                 self._bg_next_step = NextStep.WEAKEN
         # ResourceType.MEMORY - If BG workload was strengthened than its assigned cores, then BG can weaken!
         elif self._contentious_resource == ResourceType.MEMORY:
-            if self._cur_bg_step == self._background_wl.orig_bound_cores[0]:
+            if self._cur_bg_step == self._any_running_bg.orig_bound_cores[0]:
                 self._bg_next_step = NextStep.IDLE
             else:
                 self._bg_next_step = NextStep.WEAKEN
@@ -185,7 +187,7 @@ class CoreIsolator(Isolator):
 
         # ResourceType.MEMORY - If BG workload can strengthen its cores... , then strengthen BG's cores!
         elif self._contentious_resource == ResourceType.MEMORY:
-            if self._cur_bg_step == self._background_wl.orig_bound_cores[-1]:
+            if self._cur_bg_step == self._any_running_bg.orig_bound_cores[-1]:
                 self._bg_next_step = NextStep.IDLE
             else:
                 self._bg_next_step = NextStep.STRENGTHEN
@@ -207,8 +209,8 @@ class CoreIsolator(Isolator):
             return NextStep.STRENGTHEN
 
     def reset(self) -> None:
-        if self._background_wl.is_running:
-            self._background_wl.bound_cores = self._background_wl.orig_bound_cores
+        for bg in self._all_running_bgs:
+            bg.bound_cores = bg.orig_bound_cores
         if self._foreground_wl.is_running:
             self._foreground_wl.bound_cores = self._foreground_wl.orig_bound_cores
 

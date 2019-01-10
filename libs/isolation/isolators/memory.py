@@ -1,7 +1,7 @@
 # coding: UTF-8
 
 import logging
-from typing import Optional
+from typing import Optional, Tuple
 
 from .base import Isolator
 from ...metric_container.basic_metric import MetricDiff
@@ -10,8 +10,8 @@ from ...workload import Workload
 
 
 class MemoryIsolator(Isolator):
-    def __init__(self, foreground_wl: Workload, background_wl: Workload) -> None:
-        super().__init__(foreground_wl, background_wl)
+    def __init__(self, foreground_wl: Workload, background_wls: Tuple[Workload, ...]) -> None:
+        super().__init__(foreground_wl, background_wls)
 
         # FIXME: hard coded
         self._cur_step: int = DVFS.MAX
@@ -41,12 +41,15 @@ class MemoryIsolator(Isolator):
 
     def enforce(self) -> None:
         logger = logging.getLogger(__name__)
-        logger.info(f'frequency of bound_cores {self._background_wl.bound_cores} is {self._cur_step / 1_000_000}GHz')
+        logger.info(f'frequency of bound_cores {self._any_running_bg.bound_cores} is {self._cur_step / 1_000_000}GHz')
 
-        DVFS.set_freq(self._cur_step, self._background_wl.bound_cores)
+        # FIXME: hard coded
+        DVFS.set_freq(self._cur_step, self._any_running_bg.bound_cores)
 
     def reset(self) -> None:
-        DVFS.set_freq(DVFS.MAX, self._background_wl.orig_bound_cores)
+        # FIXME: hard coded
+        for bg in self._all_running_bgs:
+            DVFS.set_freq(DVFS.MAX, bg.orig_bound_cores)
 
     def store_cur_config(self) -> None:
         self._stored_config = self._cur_step

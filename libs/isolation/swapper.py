@@ -3,6 +3,7 @@
 import logging
 import subprocess
 import time
+from itertools import chain
 from typing import Dict, Optional, Set, Tuple
 
 import psutil
@@ -44,25 +45,27 @@ class SwapIsolator:
 
         # TODO: more efficient implementation
         for idx, (group1, g1_fg_diff) in enumerate(contentions):
+            # FIXME: hard coded
+            # FIXME: multi bg
             for group2, g2_fg_diff in contentions[idx + 1:]:
-                g1_bg_curr_cores = len(group1.background_workload.cgroup_cpuset.read_cpus())
-                g2_bg_curr_cores = len(group2.background_workload.cgroup_cpuset.read_cpus())
+                g1_bg_curr_cores = len(group1.background_workloads[0].cgroup_cpuset.read_cpus())
+                g2_bg_curr_cores = len(group2.background_workloads[0].cgroup_cpuset.read_cpus())
 
                 g1_fg_cont = g1_fg_diff.instruction_ps
                 g2_fg_cont = g2_fg_diff.instruction_ps
 
-                g1_bg_cont = group1.background_workload.calc_metric_diff().instruction_ps
-                g2_bg_cont = group2.background_workload.calc_metric_diff().instruction_ps
+                g1_bg_cont = sum(bg.calc_metric_diff().instruction_ps for bg in group1.background_workloads)
+                g2_bg_cont = sum(bg.calc_metric_diff().instruction_ps for bg in group2.background_workloads)
                 current = abs(g1_fg_cont + g1_bg_cont) + abs(g2_fg_cont + g2_bg_cont)
 
-                g1_bg_cont = group1 \
-                    .background_workload \
-                    .calc_metric_diff(g2_bg_curr_cores / g1_bg_curr_cores) \
-                    .instruction_ps
-                g2_bg_cont = group2 \
-                    .background_workload \
-                    .calc_metric_diff(g1_bg_curr_cores / g2_bg_curr_cores) \
-                    .instruction_ps
+                g1_bg_cont = sum(
+                        bg.calc_metric_diff(g2_bg_curr_cores / g1_bg_curr_cores).instruction_ps
+                        for bg in group1.background_workloads
+                )
+                g2_bg_cont = sum(
+                        bg.calc_metric_diff(g1_bg_curr_cores / g2_bg_curr_cores).instruction_ps
+                        for bg in group2.background_workloads
+                )
                 future = abs(g1_fg_cont + g2_bg_cont) + abs(g2_fg_cont + g1_bg_cont)
 
                 benefit = current - future
@@ -92,9 +95,7 @@ class SwapIsolator:
                 and groups[0] in self._prev_grp \
                 and groups[1] in self._prev_grp:
             self._violation_count += 1
-            logger.debug(
-                    f'violation count of {groups[0].background_workload}, '
-                    f'{groups[1].background_workload} is {self._violation_count}')
+            logger.debug(f'violation count of {groups[0].name}, {groups[1].name} is {self._violation_count}')
             return self._violation_count >= self._VIOLATION_THRESHOLD
 
         else:
@@ -107,35 +108,36 @@ class SwapIsolator:
     def do_swap(self) -> None:
         logger = logging.getLogger(__name__)
         group1, group2 = tuple(self._prev_grp)
-        logger.info(f'Starting swaption between {group1.background_workload} and {group2.background_workload}...')
+        logger.info(f'Starting swaption between {group1.background_workloads} and {group2.background_workloads}...')
 
-        workload1 = group1.background_workload
-        workload2 = group2.background_workload
+        workload1 = group1.background_workloads
+        workload2 = group2.background_workloads
 
         # Enable CPUSET memory migration
-        workload1.cgroup_cpuset.set_memory_migrate(True)
-        workload2.cgroup_cpuset.set_memory_migrate(True)
+        for bg in chain(workload1, workload2):
+            bg.cgroup_cpuset.set_memory_migrate(True)
 
         try:
             # Suspend Procs and Enforce Swap Conf.
-            workload1.pause()
-            workload2.pause()
+            for bg in chain(workload1, workload2):
+                bg.pause()
 
-            tmp1, tmp2 = workload2.orig_bound_mems, workload1.orig_bound_mems
-            workload2.orig_bound_mems, workload1.orig_bound_mems = tmp2, tmp1
-            tmp1, tmp2 = workload2.orig_bound_cores, workload1.orig_bound_cores
-            workload2.orig_bound_cores, workload1.orig_bound_cores = tmp2, tmp1
+            for bg1, bg2 in zip(workload1, workload2):
+                tmp1, tmp2 = bg2.orig_bound_mems, bg1.orig_bound_mems
+                bg2.orig_bound_mems, bg1.orig_bound_mems = tmp2, tmp1
+                tmp1, tmp2 = bg2.orig_bound_cores, bg1.orig_bound_cores
+                bg2.orig_bound_cores, bg1.orig_bound_cores = tmp2, tmp1
 
-            group1.background_workload = workload2
-            group2.background_workload = workload1
+            group1.background_workloads = workload2
+            group2.background_workloads = workload1
 
         except (psutil.NoSuchProcess, subprocess.CalledProcessError, ProcessLookupError) as e:
             logger.warning('Error occurred during swaption', e)
 
         finally:
             # Resume Procs
-            workload1.resume()
-            workload2.resume()
+            for bg in chain(workload1, workload2):
+                bg.resume()
             self._violation_count = 0
             self._prev_grp.clear()
             self._last_swap = time.time()
