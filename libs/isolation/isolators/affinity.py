@@ -27,7 +27,7 @@ class AffinityIsolator(Isolator):
     @property
     def is_max_level(self) -> bool:
         # FIXME: hard coded
-        return self._cur_step + 1 == self._any_running_bg.bound_cores[0]
+        return self._cur_step + 1 >= self._any_running_bg.bound_cores[0]
 
     @property
     def is_min_level(self) -> bool:
